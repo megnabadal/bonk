@@ -538,9 +538,14 @@ def interrogate(reason, app, persona, cfg):
     pass_min = cfg["pass_minutes"]
     key = cfg.get("gemini_api_key", "").strip()
     if key:
-        for model in dict.fromkeys([cfg["gemini_model"], "gemini-3.8-flash"]):
-            verdict = _ask_gemini(key, model, reason, app, persona, pass_min, json_mode=True)
-            if verdict:
-                return verdict
+        import time as _time
+        for model in dict.fromkeys([cfg["gemini_model"], "gemini-3.8-flash", "gemini-3.6-flash"]):
+            for attempt in range(3):                      # Google busy (503/429)? wait and retry
+                verdict = _ask_gemini(key, model, reason, app, persona, pass_min, json_mode=True)
+                if verdict:
+                    return verdict
+                if not any(f" {c} " in LAST_AI_STATUS for c in (503, 429, 500)):
+                    break
+                _time.sleep(1.2 * (attempt + 1))
     allowed = offline_verdict(reason)
     return allowed, line(persona, "allow" if allowed else "deny", **{"pass": pass_min}), pass_min

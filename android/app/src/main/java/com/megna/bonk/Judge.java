@@ -83,20 +83,31 @@ final class Judge {
         int pass = Prefs.passMinutes(c);
         String key = Prefs.geminiKey(c);
         if (!key.isEmpty()) {
-            String model = Prefs.geminiModel(c);
-            Verdict v = askGemini(c, key, model, reason, app, persona, pass, true);
-            if (v == null && !model.equals(RECOMMENDED_MODEL)) {
-                String first = Prefs.aiStatus(c);
-                v = askGemini(c, key, RECOMMENDED_MODEL, reason, app, persona, pass, true);
-                if (v == null) Prefs.setAiStatus(c, first + "\n" + Prefs.aiStatus(c));
+            // try your model (with retries when Google is busy), then a backup model
+            java.util.LinkedHashSet<String> models = new java.util.LinkedHashSet<>();
+            models.add(Prefs.geminiModel(c));
+            models.add(RECOMMENDED_MODEL);
+            models.add(BACKUP_MODEL);
+            StringBuilder errors = new StringBuilder();
+            for (String model : models) {
+                for (int attempt = 0; attempt < 3; attempt++) {
+                    Verdict v = askGemini(c, key, model, reason, app, persona, pass, true);
+                    if (v != null) return v;
+                    String st = Prefs.aiStatus(c);
+                    boolean busy = st.contains(" 503 ") || st.contains(" 429 ") || st.contains(" 500 ");
+                    if (!busy) break;                                   // a real error: no point retrying
+                    try { Thread.sleep(1200L * (attempt + 1)); } catch (InterruptedException ignored) {}
+                }
+                errors.append(Prefs.aiStatus(c)).append('\n');
             }
-            if (v != null) return v;
+            Prefs.setAiStatus(c, errors.toString().trim() + "\n(Used offline rules this time.)");
         }
         boolean allowed = offline(reason);
         return new Verdict(allowed, persona.line(allowed ? "allow" : "deny", Characters.vars("pass", pass)), pass);
     }
 
     static final String RECOMMENDED_MODEL = "gemini-3.8-flash";
+    static final String BACKUP_MODEL = "gemini-3.6-flash";       // used when the main one is overloaded
 
     /**
      * One Gemini call. Returns null on failure and stores the reason in Prefs.aiStatus.
