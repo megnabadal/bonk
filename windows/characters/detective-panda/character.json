@@ -1,0 +1,12 @@
+{
+  "id": "detective-panda",
+  "name": "Detective Bonk",
+  "species": "panda",
+  "outfit": "trench",
+  "outfit_color": "#d6b276",
+  "hat": "fedora",
+  "hat_color": "#5c5860",
+  "eyewear": "shades",
+  "expression": "deadpan",
+  "personality": "detective"
+}

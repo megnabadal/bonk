@@ -1,0 +1,108 @@
+{
+  "detective": {
+    "label": "Detective",
+    "caught": [
+      "Caught in the act.",
+      "Case #{n}: suspect found on {app}.",
+      "Evidence: {mins} min of scrolling. Verdict: back to work.",
+      "I've been watching you scroll."
+    ],
+    "done": "Case closed.",
+    "ask": "State your business on {app}.",
+    "allow": "Fine. You have {pass} minutes. I'm watching.",
+    "deny": "Not convincing. Case closed.",
+    "watch_ask": "Watching something on purpose, or just loitering on {app}?",
+    "watch_ok": "Noted: {title}. Enjoy it. I'm watching.",
+    "watch_no": "Loitering. Case closed."
+  },
+  "closer": {
+    "label": "Sharp-suited closer",
+    "caught": [
+      "Winners don't scroll. They close.",
+      "This app is a bad deal. I'm walking you out.",
+      "You're better than this feed. Act like it."
+    ],
+    "done": "Deal closed.",
+    "ask": "Pitch me. Why do you need {app}?",
+    "allow": "Good pitch. {pass} minutes.",
+    "deny": "Weak pitch. We're done here.",
+    "watch_ask": "Is this a deliberate choice, or are you just letting {app} sell you?",
+    "watch_ok": "{title}. Solid choice. Enjoy.",
+    "watch_no": "No plan, no deal. Closing it."
+  },
+  "chatterbox": {
+    "label": "Fast-talking coffee lover",
+    "caught": [
+      "Okay okay okay, that was a LOT of {app}.",
+      "Coffee break? Yes. Scroll marathon? No.",
+      "Quick, before the algorithm notices you're gone!"
+    ],
+    "done": "Bye! Go be brilliant!",
+    "ask": "Wait wait, why {app} right now? Talk fast.",
+    "allow": "Okay, fair! {pass} minutes, go go go!",
+    "deny": "Nope, I've heard better excuses from my coffee mug.",
+    "watch_ask": "Ooh, {app}! Are we watching a thing or just browsing forever?",
+    "watch_ok": "Yes! {title}! Get snacks, go!",
+    "watch_no": "Browsing forever? Not on my watch. Bye!"
+  },
+  "goofy_dad": {
+    "label": "Goofy dad",
+    "caught": [
+      "Hey champ! Phone down, goals up!",
+      "I'd tell you a joke about reels, but you'd scroll past it.",
+      "Fun fact: {mins} minutes on {app}. Not so fun."
+    ],
+    "done": "High five! ...anyone?",
+    "ask": "Hey sport, what's the plan on {app}?",
+    "allow": "That's my kid! {pass} minutes, then back to it.",
+    "deny": "Nice try, kiddo. Dad says no.",
+    "watch_ask": "Movie night, champ? What are we watching on {app}?",
+    "watch_ok": "{title}? Great pick, kiddo!",
+    "watch_no": "No pick, no flick. Off we go!"
+  },
+  "mind_reader": {
+    "label": "Smug mind reader",
+    "caught": [
+      "Let me guess. 'Just one more.'",
+      "I know exactly what you're avoiding.",
+      "Predictable. Closing {app} now."
+    ],
+    "done": "Told you.",
+    "ask": "Go on, tell me why. I already know.",
+    "allow": "Hm. Surprisingly honest. {pass} minutes.",
+    "deny": "I knew you'd say that. Closed.",
+    "watch_ask": "You don't know what you want to watch, do you?",
+    "watch_ok": "{title}. Hm, I didn't see that coming. Enjoy.",
+    "watch_no": "As I suspected. Just rotting."
+  },
+  "strict_cop": {
+    "label": "Strict cop",
+    "caught": [
+      "Step away from the feed.",
+      "You have the right to remain productive.",
+      "Case #{n}. Hands off {app}."
+    ],
+    "done": "Move along.",
+    "ask": "Reason for entering {app}?",
+    "allow": "Approved. {pass} minutes. Don't make me come back.",
+    "deny": "Denied. Move along.",
+    "watch_ask": "State the title you intend to watch on {app}.",
+    "watch_ok": "{title}. Approved. Carry on.",
+    "watch_no": "No title, no entry."
+  },
+  "cheerleader": {
+    "label": "Cheerleader",
+    "caught": [
+      "You've got this! But not on {app}!",
+      "Proud of you! Now go do the thing!",
+      "Tiny break over! Big goals waiting!"
+    ],
+    "done": "Go get 'em!",
+    "ask": "Hey! What do you need {app} for?",
+    "allow": "Love that! {pass} minutes, then back to winning!",
+    "deny": "Aww, not good enough. You can do better!",
+    "watch_ask": "Yay, show time? What are you watching on {app}?",
+    "watch_ok": "{title}! Love that for you! Enjoy!",
+    "watch_no": "Aww, rotting isn't resting! Go do something fun!"
+  }
+}

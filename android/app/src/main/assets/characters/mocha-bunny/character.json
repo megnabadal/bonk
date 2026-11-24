@@ -1,0 +1,11 @@
+{
+  "id": "mocha-bunny",
+  "name": "Mocha",
+  "species": "bunny",
+  "outfit": "cardigan",
+  "outfit_color": "#e3a857",
+  "hat": "beanie",
+  "hat_color": "#c75b7a",
+  "expression": "cheery",
+  "personality": "chatterbox"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "oracle-cat",
+  "name": "Oracle",
+  "species": "cat",
+  "outfit": "suit",
+  "outfit_color": "#3a3a44",
+  "tie_color": "#3fb6a8",
+  "expression": "smug",
+  "personality": "mind_reader"
+}

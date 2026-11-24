@@ -1,0 +1,11 @@
+{
+  "name": "Juno",
+  "species": "human",
+  "fur": "#d29b72",
+  "hair": "bob",
+  "hair_color": "#1f1a1c",
+  "outfit": "hoodie",
+  "outfit_color": "#ff7f6e",
+  "expression": "cheery",
+  "personality": "chatterbox"
+}

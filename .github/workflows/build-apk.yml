@@ -1,0 +1,56 @@
+name: Build Bonk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Render characters (from characters/*.json)
+        run: node tools/render.js && node tools/build_studio.js && node tools/build_demo.js
+
+      - name: Test core logic
+        run: python3 tests/test_core.py
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build APK
+        working-directory: android
+        run: gradle assembleDebug
+
+      - name: Package
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk Bonk.apk
+          rm -f windows/cases.jsonl windows/case_report.html
+          zip -r Bonk-Windows.zip windows
+
+      - name: Publish release (download on your phone or laptop)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.0.${{ github.run_number }}
+          name: Bonk v2.0.${{ github.run_number }}
+          body: |
+            **Phone:** tap **Bonk.apk** below to download and install.
+            **Laptop:** download **Bonk-Windows.zip**, unzip, double-click `start_bonk.bat`.
+          files: |
+            Bonk.apk
+            Bonk-Windows.zip

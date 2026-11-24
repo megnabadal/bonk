@@ -1,0 +1,13 @@
+{
+  "id": "kit-human",
+  "name": "Kit",
+  "species": "human",
+  "fur": "#b07850",
+  "hair": "buzz",
+  "hair_color": "#2a1d16",
+  "outfit": "trench",
+  "outfit_color": "#6f7a48",
+  "eyewear": "shades",
+  "expression": "deadpan",
+  "personality": "detective"
+}

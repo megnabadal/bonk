@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+windows/cases.jsonl
+windows/case_report.html
+.gradle/
+build/
+local.properties
+.idea/
+*.iml

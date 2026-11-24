@@ -1,0 +1,13 @@
+{
+  "id": "maple-human",
+  "name": "Maple",
+  "species": "human",
+  "fur": "#f6d9c6",
+  "hair": "curly",
+  "hair_color": "#c8642c",
+  "outfit": "cardigan",
+  "outfit_color": "#9b8ac9",
+  "eyewear": "glasses",
+  "expression": "cheery",
+  "personality": "goofy_dad"
+}
