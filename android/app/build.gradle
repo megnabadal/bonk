@@ -14,6 +14,20 @@ android {
         versionName "1.0"
     }
 
+    // One fixed signing key, so each new APK from GitHub installs as an update
+    // instead of failing with "App not installed". (A debug key: fine for personal use.)
+    signingConfigs {
+        bonk {
+            storeFile file("bonk-debug.keystore")
+            storePassword "android"
+            keyAlias "bonk"
+            keyPassword "android"
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.bonk }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
