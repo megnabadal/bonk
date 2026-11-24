@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reads which app is open, scroll events, and view IDs (to spot Reels/Shorts screens).
+     Never reads on-screen text. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeViewScrolled|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds"
+    android:notificationTimeout="250"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/service_desc" />

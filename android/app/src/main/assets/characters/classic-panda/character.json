@@ -1,0 +1,9 @@
+{
+  "id": "classic-panda",
+  "name": "Bonk Classic",
+  "species": "panda",
+  "hat": "bow",
+  "hat_color": "#ff7aa8",
+  "expression": "cheery",
+  "personality": "cheerleader"
+}

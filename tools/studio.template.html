@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bonk Character Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: playful toy-workshop, confident not childish
+   IDEA: a character casting booth - the figure on a lit stage, a control bench beside it
+   PICTURE: the live 3D character, large, on a soft spotlight floor
+   COLOUR and TYPE: warm plum ground, butter-yellow stage light, coral accent; Fredoka + Nunito
+   LAYOUT: stage left (big), bench right; stacks to stage-then-controls under 760px */
+:root{color-scheme:light dark;
+  --bg:light-dark(#fbf4ea,#1d1622);--ink:light-dark(#2d1f33,#f6ecf8);--soft:light-dark(#7a6380,#bba7c2);
+  --stage:light-dark(#3a2a40,#120d16);--light:#ffe7a3;--acc:#ff6f61;--card:light-dark(#fffdf8,#271d2d);--line:light-dark(#eadccf,#3b2f42)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Nunito,system-ui,sans-serif;overflow-x:clip}
+h1{font:700 clamp(30px,4vw,44px)/1.05 Fredoka,sans-serif;margin:0;text-wrap:balance}
+.top{padding:24px max(5vw,16px) 8px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:end;justify-content:space-between}
+.top p{margin:0;color:var(--soft);max-width:60ch}
+.wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;padding:16px max(5vw,16px) 40px;max-width:1240px;margin:auto}
+.stage{background:radial-gradient(ellipse 60% 55% at 50% 42%,rgba(255,231,163,.35),transparent 70%),var(--stage);border-radius:28px;position:relative;min-height:480px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.stage::after{content:"";position:absolute;left:12%;right:12%;bottom:58px;height:46px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(255,231,163,.28),transparent 70%)}
+#view{width:min(100%,440px);aspect-ratio:260/240;position:relative;z-index:1}
+.bubble{position:relative;z-index:2;background:#fff;color:#3a2a40;font:600 16px/1.3 Fredoka,sans-serif;padding:10px 16px;border-radius:16px;max-width:86%;text-align:center;margin-top:8px}
+.stagebar{display:flex;gap:8px;margin:14px 0 18px;z-index:2;flex-wrap:wrap;justify-content:center}
+.bench{display:grid;gap:14px;align-content:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px}
+.card h2{font:600 18px/1.2 Fredoka,sans-serif;margin:0 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:8px 14px;font:600 15px Nunito,sans-serif;min-height:44px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.swatch[aria-pressed=true]{border:3px solid var(--acc)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+label{font-weight:600;font-size:14px;color:var(--soft)}
+input[type=text],select{font:16px Nunito,sans-serif;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-height:44px;width:100%}
+input[type=color]{width:48px;height:44px;border:1.5px solid var(--line);border-radius:12px;padding:3px;background:var(--bg)}
+.btn{font:600 16px Fredoka,sans-serif;border:0;border-radius:999px;padding:10px 20px;min-height:44px;cursor:pointer;background:var(--light);color:#3a2a40}
+.btn.alt{background:rgba(255,255,255,.12);color:#fff}
+.btn.acc{background:var(--acc);color:#fff}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px;overflow-x:auto;margin:10px 0 0}
+ol{margin:8px 0 0;padding-left:20px;color:var(--soft)}
+.note{font-size:13px;color:var(--soft)}
+.hide{display:none}
+@media(max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}.stage{min-height:400px}}
+@media(prefers-reduced-motion:reduce){.stage{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Bonk Character Studio</h1>
+  <p>Cast your own anti-doomscroll bot, an animal or a person. Every option is drawn live in 3D. When you like it, copy the character file into your Bonk repo and the app rebuilds with it.</p>
+</header>
+
+<main class="wrap">
+  <section class="stage" aria-label="Character preview">
+    <canvas id="view" width="520" height="480"></canvas>
+    <div class="bubble" id="bubble">Caught in the act.</div>
+    <div class="stagebar">
+      <button class="btn" id="play">Play the kick</button>
+      <button class="btn alt" id="shuffle">Surprise me</button>
+    </div>
+  </section>
+
+  <section class="bench">
+    <div class="card">
+      <h2>Name</h2>
+      <input type="text" id="name" value="Detective Bonk" maxlength="24" aria-label="Character name">
+    </div>
+    <div class="card"><h2>Animal</h2><div class="chips" id="species"></div>
+      <div class="row"><label for="fur">Fur</label><input type="color" id="fur"><label for="accent">Second colour</label><input type="color" id="accent">
+      <button class="chip" id="resetColors">Natural colours</button></div>
+    </div>
+    <div class="card" id="humanCard"><h2>Skin and hair</h2>
+      <div class="chips" id="skin" aria-label="Skin tone"></div>
+      <div class="chips" id="hair" style="margin-top:10px"></div>
+      <div class="row"><label for="hair_color">Hair colour</label><input type="color" id="hair_color"></div>
+    </div>
+    <div class="card"><h2>Outfit</h2><div class="chips" id="outfit"></div>
+      <div class="row"><label for="outfit_color">Colour</label><input type="color" id="outfit_color">
+      <span id="tieWrap" class="row" style="margin:0"><label for="tie_color">Tie</label><input type="color" id="tie_color"></span></div>
+    </div>
+    <div class="card"><h2>Hat</h2><div class="chips" id="hat"></div>
+      <div class="row"><label for="hat_color">Colour</label><input type="color" id="hat_color"></div>
+    </div>
+    <div class="card"><h2>Eyes</h2><div class="chips" id="eyewear"></div><div class="chips" id="expression" style="margin-top:10px"></div></div>
+    <div class="card"><h2>Personality</h2>
+      <select id="personality" aria-label="Personality"></select>
+      <p class="note" id="personaSample"></p>
+    </div>
+    <div class="card"><h2>Use it in Bonk</h2>
+      <button class="btn acc" id="copy">Copy character file</button>
+      <span class="note" id="copied" role="status"></span>
+      <pre id="json"></pre>
+      <ol>
+        <li>On GitHub, open your <b>bonk</b> repo → <b>characters</b> folder → <b>Add file → Create new file</b>.</li>
+        <li>Name it <code id="fname">my-bonk.json</code> and paste.</li>
+        <li>Commit. GitHub renders it and builds a new app. Pick it in Bonk's character list.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<script>
+/*RENDERER*/
+</script>
+<script>
+{
+const PERSONAS = /*PERSONAS*/;
+const R = BonkRender;
+const LABELS = {
+  species: Object.fromEntries(Object.entries(R.SPECIES).map(([k, v]) => [k, v.label])),
+  outfit: {none: "None", trench: "Trench coat", suit: "Sharp suit", hoodie: "Hoodie", cardigan: "Cardigan"},
+  hat: {none: "None", fedora: "Fedora", beanie: "Beanie", bow: "Bow"},
+  eyewear: {none: "No eyewear", shades: "Shades", glasses: "Glasses"},
+  expression: {cheery: "Cheery", smug: "Smug", deadpan: "Deadpan"},
+  hair: {short: "Short", bob: "Bob", long: "Long", curly: "Curly", bun: "Bun", buzz: "Buzz cut"}
+};
+const state = {name: "Detective Bonk", species: "panda", fur: "#ffffff", accent: "#2e2e38", outfit: "trench",
+  outfit_color: "#d6b276", tie_color: "#d64550", hat: "fedora", hat_color: "#5c5860", eyewear: "shades",
+  expression: "deadpan", personality: "detective", hair: "short", hair_color: "#3b2a22"};
+const $ = id => document.getElementById(id);
+const view = $("view"), ctx = view.getContext("2d");
+let anim = null, timer = null;
+
+function chips(key) {
+  const box = $(key);
+  box.innerHTML = R.OPTIONS[key].map(v => `<button class="chip" data-k="${key}" data-v="${v}" aria-pressed="${state[key] === v}">${LABELS[key][v]}</button>`).join("");
+}
+function syncInputs() {
+  const human = state.species === "human";
+  LABELS.outfit.none = human ? "T-shirt" : "None";
+  ["species", "outfit", "hat", "eyewear", "expression", "hair"].forEach(chips);
+  ["fur", "accent", "outfit_color", "tie_color", "hat_color", "hair_color"].forEach(k => $(k).value = state[k]);
+  $("skin").innerHTML = R.SKINS.map(c => `<button class="chip swatch" data-skin="${c}" aria-label="Skin tone ${c}" aria-pressed="${state.fur === c}" style="background:${c};width:44px"></button>`).join("");
+  $("humanCard").classList.toggle("hide", !human);
+  $("fur").closest(".row").classList.toggle("hide", human);
+  $("name").value = state.name;
+  $("personality").value = state.personality;
+  $("tieWrap").classList.toggle("hide", state.outfit !== "suit");
+  $("outfit_color").disabled = state.outfit === "none" && !human;
+  $("hat_color").disabled = state.hat === "none";
+}
+function spec() {
+  const s = Object.assign({}, state);
+  const sp = R.SPECIES[s.species];
+  if (s.fur.toLowerCase() === sp.fur && s.species !== "human") delete s.fur;
+  if (s.accent.toLowerCase() === sp.accent) delete s.accent;
+  if (s.outfit === "none" && s.species !== "human") delete s.outfit_color;
+  if (s.species !== "human") { delete s.hair; delete s.hair_color; }
+  if (s.outfit !== "suit") delete s.tie_color;
+  if (s.hat === "none") delete s.hat_color;
+  return s;
+}
+function slug() { return (state.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "my-bonk"); }
+
+function paint(img) {
+  const id = new ImageData(new Uint8ClampedArray(img.data), img.width, img.height);
+  ctx.clearRect(0, 0, view.width, view.height);
+  ctx.putImageData(id, 0, 0);
+}
+function line(key) {
+  const p = PERSONAS[state.personality], t = p[key];
+  return (Array.isArray(t) ? t[Math.floor(Math.random() * t.length)] : t)
+    .replace("{n}", "7").replace("{app}", "Instagram").replace("{mins}", "12").replace("{pass}", "5");
+}
+function redraw() {
+  stopAnim();
+  syncInputs();
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    paint(R.render(spec(), {}, 2, 2));
+    $("bubble").textContent = line("caught");
+    const p = PERSONAS[state.personality];
+    $("personaSample").textContent = `"${line("caught")}" … "${p.done}"`;
+    const file = JSON.stringify(spec(), null, 2);
+    $("json").textContent = file;
+    $("fname").textContent = slug() + ".json";
+  }, 60);
+}
+
+function stopAnim() { if (anim) { cancelAnimationFrame(anim.raf); anim = null; $("play").textContent = "Play the kick"; } }
+function play() {
+  if (anim) return stopAnim();
+  $("play").textContent = "Rendering…";
+  setTimeout(() => {
+    const frames = {};
+    for (const [name, pose] of R.poses()) frames[name] = R.render(spec(), pose, 2, 1);
+    const caught = line("caught"), done = PERSONAS[state.personality].done;
+    const t0 = performance.now(), TWO = Math.PI * 2;
+    anim = {};
+    $("play").textContent = "Stop";
+    const step = now => {
+      const t = Math.max(0, (now - t0) / 1000) % 5.4;
+      let f;
+      if (t < 1.2) f = "walkL" + Math.floor((t * 16 % TWO) / TWO * 8) % 8;
+      else if (t < 2.4) f = (t % 2.2) < 0.15 ? "blink" : "idle";
+      else if (t < 2.9) f = "reach" + Math.min(5, Math.floor((t - 2.4) / 0.5 * 6));
+      else f = "peace" + Math.floor((t * 6 % TWO) / TWO * 8) % 8;
+      paint(frames[f]);
+      $("bubble").textContent = t < 2.9 ? caught : done;
+      anim.raf = requestAnimationFrame(step);
+    };
+    anim.raf = requestAnimationFrame(step);
+  }, 30);
+}
+
+document.addEventListener("click", e => {
+  const sw = e.target.closest("[data-skin]");
+  if (sw) { state.fur = sw.dataset.skin; return redraw(); }
+  const b = e.target.closest(".chip[data-k]");
+  if (!b) return;
+  const k = b.dataset.k, v = b.dataset.v;
+  state[k] = v;
+  if (k === "species") { state.fur = R.SPECIES[v].fur; state.accent = R.SPECIES[v].accent; }
+  redraw();
+});
+["fur", "accent", "outfit_color", "tie_color", "hat_color", "hair_color"].forEach(k => $(k).addEventListener("input", e => { state[k] = e.target.value; redraw(); }));
+$("name").addEventListener("input", e => { state.name = e.target.value || "Bonk"; redraw(); });
+$("personality").innerHTML = Object.entries(PERSONAS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join("");
+$("personality").addEventListener("change", e => { state.personality = e.target.value; redraw(); });
+$("resetColors").addEventListener("click", () => { const sp = R.SPECIES[state.species]; state.fur = sp.fur; state.accent = sp.accent; redraw(); });
+$("play").addEventListener("click", play);
+$("shuffle").addEventListener("click", () => {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const hue = () => "#" + Array.from({length: 3}, () => Math.floor(60 + Math.random() * 170).toString(16).padStart(2, "0")).join("");
+  state.species = pick(R.OPTIONS.species);
+  state.fur = R.SPECIES[state.species].fur; state.accent = R.SPECIES[state.species].accent;
+  if (state.species === "human") { state.fur = pick(R.SKINS); state.hair = pick(R.OPTIONS.hair); state.hair_color = pick(["#1f1a1c", "#3b2a22", "#6b3a24", "#c8642c", "#d9b46a", "#8a8f98"]); }
+  state.outfit = pick(R.OPTIONS.outfit); state.outfit_color = hue(); state.tie_color = hue();
+  state.hat = pick(R.OPTIONS.hat); state.hat_color = hue();
+  state.eyewear = pick(R.OPTIONS.eyewear); state.expression = pick(R.OPTIONS.expression);
+  state.personality = pick(Object.keys(PERSONAS));
+  redraw();
+});
+$("copy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("json").textContent); $("copied").textContent = " Copied!"; }
+  catch (err) { $("copied").textContent = " Select the text below and copy it."; }
+});
+redraw();
+}
+</script>
+</body>
+</html>

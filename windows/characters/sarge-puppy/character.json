@@ -1,0 +1,10 @@
+{
+  "id": "sarge-puppy",
+  "name": "Sarge",
+  "species": "puppy",
+  "outfit": "trench",
+  "outfit_color": "#34466e",
+  "eyewear": "shades",
+  "expression": "deadpan",
+  "personality": "strict_cop"
+}

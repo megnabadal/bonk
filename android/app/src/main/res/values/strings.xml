@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_desc">Bonk looks at which app is open, how fast you swipe, and screen IDs (to spot Reels and Shorts). It never reads what is on your screen. If you rot too long, a character walks in and sends you home. Data only leaves the phone if you turn on AI interrogation or sync.</string>
+</resources>

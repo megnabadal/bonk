@@ -1,0 +1,13 @@
+{
+  "name": "Indie",
+  "species": "human",
+  "fur": "#e8bd9c",
+  "hair": "long",
+  "hair_color": "#6b3a24",
+  "outfit": "none",
+  "outfit_color": "#7fd6c8",
+  "hat": "beanie",
+  "hat_color": "#3c4a7a",
+  "expression": "smug",
+  "personality": "mind_reader"
+}

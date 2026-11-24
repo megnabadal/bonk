@@ -1,0 +1,72 @@
+[
+  {
+    "id": "ace-fox",
+    "name": "Ace",
+    "personality": "closer"
+  },
+  {
+    "id": "classic-panda",
+    "name": "Bonk Classic",
+    "personality": "cheerleader"
+  },
+  {
+    "id": "detective-panda",
+    "name": "Detective Bonk",
+    "personality": "detective"
+  },
+  {
+    "id": "frost-polar",
+    "name": "Frost",
+    "personality": "cheerleader"
+  },
+  {
+    "id": "indie-human",
+    "name": "Indie",
+    "personality": "mind_reader"
+  },
+  {
+    "id": "juno-human",
+    "name": "Juno",
+    "personality": "chatterbox"
+  },
+  {
+    "id": "kit-human",
+    "name": "Kit",
+    "personality": "detective"
+  },
+  {
+    "id": "maple-human",
+    "name": "Maple",
+    "personality": "goofy_dad"
+  },
+  {
+    "id": "mocha-bunny",
+    "name": "Mocha",
+    "personality": "chatterbox"
+  },
+  {
+    "id": "oracle-cat",
+    "name": "Oracle",
+    "personality": "mind_reader"
+  },
+  {
+    "id": "pops-bear",
+    "name": "Pops",
+    "personality": "goofy_dad"
+  },
+  {
+    "id": "rafe-human",
+    "name": "Rafe",
+    "personality": "closer"
+  },
+  {
+    "id": "sarge-puppy",
+    "name": "Sarge",
+    "personality": "strict_cop"
+  },
+  {
+    "id": "sol-human",
+    "name": "Sol",
+    "personality": "cheerleader"
+  }
+]

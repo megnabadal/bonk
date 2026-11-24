@@ -1,0 +1,10 @@
+{
+  "id": "pops-bear",
+  "name": "Pops",
+  "species": "bear",
+  "outfit": "cardigan",
+  "outfit_color": "#5a8f6a",
+  "eyewear": "glasses",
+  "expression": "cheery",
+  "personality": "goofy_dad"
+}
