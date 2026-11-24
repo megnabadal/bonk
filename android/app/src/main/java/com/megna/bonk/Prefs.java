@@ -12,7 +12,7 @@ import java.util.Set;
 final class Prefs {
 
     /** What Bonk does with an app. */
-    enum Kind { ROT, WATCH, SAFE }
+    enum Kind { ROT, WATCH, SAFE, GAME }
 
     static final class App {
         final String pkg, label; final Kind kind;
@@ -38,6 +38,28 @@ final class Prefs {
         add("com.sonyliv", "SonyLIV", Kind.WATCH);
         add("com.graymatrix.did", "ZEE5", Kind.WATCH);
         add("com.mxtech.videoplayer.ad", "MX Player", Kind.WATCH);
+        add("com.pubg.imobile", "BGMI", Kind.GAME);
+        add("com.dts.freefireth", "Free Fire", Kind.GAME);
+        add("com.dts.freefiremax", "Free Fire MAX", Kind.GAME);
+        add("com.activision.callofduty.shooter", "Call of Duty: Mobile", Kind.GAME);
+        add("com.supercell.brawlstars", "Brawl Stars", Kind.GAME);
+        add("com.supercell.clashofclans", "Clash of Clans", Kind.GAME);
+        add("com.supercell.clashroyale", "Clash Royale", Kind.GAME);
+        add("jp.konami.pesam", "eFootball", Kind.GAME);
+        add("com.ea.gp.fifamobile", "EA SPORTS FC Mobile", Kind.GAME);
+        add("com.kiloo.subwaysurf", "Subway Surfers", Kind.GAME);
+        add("com.king.candycrushsaga", "Candy Crush Saga", Kind.GAME);
+        add("com.ludo.king", "Ludo King", Kind.GAME);
+        add("com.mojang.minecraftpe", "Minecraft", Kind.GAME);
+        add("com.roblox.client", "Roblox", Kind.GAME);
+        add("com.miHoYo.GenshinImpact", "Genshin Impact", Kind.GAME);
+        add("com.innersloth.spacemafia", "Among Us", Kind.GAME);
+        add("com.miniclip.eightballpool", "8 Ball Pool", Kind.GAME);
+        add("com.nianticlabs.pokemongo", "Pokémon GO", Kind.GAME);
+        add("com.gameloft.android.ANMP.GloftA9HM", "Asphalt", Kind.GAME);
+        add("com.imangi.templerun2", "Temple Run 2", Kind.GAME);
+        add("com.fingersoft.hillclimb", "Hill Climb Racing", Kind.GAME);
+        add("com.kitkagames.fallbuddies", "Stumble Guys", Kind.GAME);
         add("com.spotify.music", "Spotify", Kind.SAFE);
         add("com.google.android.apps.youtube.music", "YouTube Music", Kind.SAFE);
         add("au.com.shiftyjelly.pocketcasts", "Pocket Casts", Kind.SAFE);
@@ -56,7 +78,12 @@ final class Prefs {
     /** What to do with this package right now, honouring the user's on/off choices. */
     static Kind kindOf(Context c, String pkg) {
         App a = APPS.get(pkg);
-        if (a == null) return null;                       // unknown app: only the swipe detector applies
+        if (a == null) {
+            // any app that tells Android it's a game counts as one (covers games not listed above)
+            if (gameLimits(c) && isGameByCategory(c, pkg)) return Kind.GAME;
+            return null;                                  // unknown app: only the swipe detector applies
+        }
+        if (a.kind == Kind.GAME) return gameLimits(c) ? Kind.GAME : Kind.SAFE;
         if (a.kind == Kind.SAFE) return Kind.SAFE;
         return enabled(c).contains(pkg) ? a.kind : Kind.SAFE;
     }
@@ -71,10 +98,52 @@ final class Prefs {
     static int limitMinutes(Context c) { return sp(c).getInt("limit_minutes", 2); }
     static void setLimitMinutes(Context c, int m) { sp(c).edit().putInt("limit_minutes", Math.max(1, m)).apply(); }
 
+    private static final Map<String, Boolean> GAME_CACHE = new java.util.HashMap<>();
+
+    static boolean isGameByCategory(Context c, String pkg) {
+        Boolean cached = GAME_CACHE.get(pkg);
+        if (cached != null) return cached;
+        boolean game = false;
+        try {
+            android.content.pm.ApplicationInfo ai = c.getPackageManager().getApplicationInfo(pkg, 0);
+            game = ai.category == android.content.pm.ApplicationInfo.CATEGORY_GAME;
+        } catch (Exception ignored) {}
+        GAME_CACHE.put(pkg, game);
+        return game;
+    }
+
+    // ---- games: per-sitting and daily limits, with 2 minutes to finish the match
+    static boolean gameLimits(Context c) { return sp(c).getBoolean("game_limits", true); }
+    static void setGameLimits(Context c, boolean on) { sp(c).edit().putBoolean("game_limits", on).apply(); }
+    static int gameSessionMinutes(Context c) { return sp(c).getInt("game_session_minutes", 45); }
+    static int gameDailyMinutes(Context c) { return sp(c).getInt("game_daily_minutes", 120); }
+    static void setGameMinutes(Context c, int session, int daily) {
+        sp(c).edit().putInt("game_session_minutes", Math.max(5, session)).putInt("game_daily_minutes", Math.max(10, daily)).apply();
+    }
+    private static String today() {
+        return new java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(new java.util.Date());
+    }
+    static long gameMsToday(Context c) { return sp(c).getLong("game_ms_" + today(), 0); }
+    static void addGameMs(Context c, long ms) { sp(c).edit().putLong("game_ms_" + today(), gameMsToday(c) + ms).apply(); }
+    static long gameCooldownUntil(Context c) { return sp(c).getLong("game_cooldown_until", 0); }
+    static void setGameCooldown(Context c, boolean dailyUsed) {
+        long until;
+        if (dailyUsed) {                                   // closed until midnight
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0);
+            cal.set(java.util.Calendar.SECOND, 0); cal.set(java.util.Calendar.MILLISECOND, 0);
+            until = cal.getTimeInMillis();
+        } else {
+            until = System.currentTimeMillis() + 15 * 60_000L;
+        }
+        sp(c).edit().putLong("game_cooldown_until", until).apply();
+    }
+
     /** ROT/WATCH apps the user has switched on (all of them by default). */
     static Set<String> enabled(Context c) {
         Set<String> def = new HashSet<>();
-        for (App a : APPS.values()) if (a.kind != Kind.SAFE) def.add(a.pkg);
+        for (App a : APPS.values()) if (a.kind == Kind.ROT || a.kind == Kind.WATCH) def.add(a.pkg);
         return new HashSet<>(sp(c).getStringSet("enabled_apps", def));
     }
     static void setEnabled(Context c, Set<String> pkgs) { sp(c).edit().putStringSet("enabled_apps", new HashSet<>(pkgs)).apply(); }

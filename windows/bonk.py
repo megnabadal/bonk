@@ -13,6 +13,7 @@ Characters live in ./characters (rendered by tools/render.js).
     python  bonk.py --ask       preview the interrogation window
     python  bonk.py --watch     preview the "watching or rotting?" check
     python  bonk.py --remind    preview the 30-minute break reminder
+    python  bonk.py --game      preview the "2 minutes to finish your match" warning
     python  bonk.py --report    open your weekly investigation report
     python  bonk.py --characters  list characters (set "character" in config.json)
 """
@@ -43,23 +44,24 @@ KEYEVENTF_KEYUP = 0x2
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 
 
-def foreground():
-    """Return (hwnd, window title, exe name) of the active window."""
+def foreground(full=False):
+    """Return (hwnd, window title, exe name) of the active window (+ exe path if full)."""
     hwnd = user32.GetForegroundWindow()
     n = user32.GetWindowTextLengthW(hwnd)
     buf = ctypes.create_unicode_buffer(n + 1)
     user32.GetWindowTextW(hwnd, buf, n + 1)
     pid = wt.DWORD()
     user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-    exe = ""
+    exe, path = "", ""
     h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
     if h:
-        size = wt.DWORD(260)
+        size = wt.DWORD(1024)
         pbuf = ctypes.create_unicode_buffer(size.value)
         if kernel32.QueryFullProcessImageNameW(h, 0, pbuf, ctypes.byref(size)):
-            exe = os.path.basename(pbuf.value).lower()
+            path = pbuf.value
+            exe = os.path.basename(path).lower()
         kernel32.CloseHandle(h)
-    return hwnd, buf.value, exe
+    return (hwnd, buf.value, exe, path) if full else (hwnd, buf.value, exe)
 
 
 def close_target(hwnd, exe, cfg):
@@ -170,6 +172,7 @@ class Bot:
 
         self.c.itemconfigure(self.img, image=self.frames[pose_at(t, self.WALK_IN, self.TALK, self.REACH, self.BYE)])
         text = self.message if self.WALK_IN <= t < self.REACH else (self.done_text if self.REACH <= t < self.BYE else None)
+        text = text or None
         bubble(self.c, self.S, text)
 
         if t < self.WALK_OUT:
@@ -283,6 +286,7 @@ def main():
     frames = Frames(character["frames_dir"])
     tracker = core.Tracker(cfg)
     reminder = core.Reminder(cfg)
+    games = core.GameTracker(cfg)
     state = {"busy": False, "last": time.time(), "last_key": None}
 
     def kick(hwnd, title, exe, verdict="kicked", reason=""):
@@ -333,11 +337,46 @@ def main():
         Bot(root, frames, core.line(persona, "remind", mins=cfg["remind_minutes"]),
             "Take a breather!", None, done)
 
+    def game_event(event, hwnd, title, exe):
+        """Gaming: warn (2 minutes to finish), then close the game."""
+        state["busy"] = True
+        daily = core.daily_label(cfg["game_daily_minutes"])
+        app = title[:30] or exe
+
+        def done():
+            state["busy"] = False
+
+        if event == "warn":
+            Bot(root, frames, core.line(persona, "game_warn"), "", None, done)
+            return
+        line_key = "game_daily" if games.reason == "daily" else "game_kick"
+        cases.open_case(app, games.session / 60, "game over", games.reason)
+
+        def grab():
+            h2, _, _ = foreground()
+            if h2 == hwnd:
+                user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)
+
+        def after():
+            games.kicked(time.time(), time.strftime("%Y-%m-%d"))
+            done()
+
+        Bot(root, frames, core.line(persona, line_key, daily=daily), core.line(persona, "done"), grab, after)
+
     def tick():
         now = time.time()
         dt_s, state["last"] = now - state["last"], now
         if not state["busy"]:
-            hwnd, title, exe = foreground()
+            hwnd, title, exe, path = foreground(full=True)
+            gaming = core.is_game(exe, path, cfg)
+            event = games.add(now, dt_s, gaming, time.strftime("%Y-%m-%d"))
+            if event:
+                game_event(event, hwnd, title, exe)
+                root.after(1000, tick)
+                return
+            if gaming:
+                root.after(1000, tick)
+                return
             kind = core.classify(title, cfg)
             if reminder.add(dt_s, kind in ("rot", "watch")):
                 remind()
@@ -362,6 +401,8 @@ def main():
         root.after(3000, lambda: kick(*foreground()))
     if "--ask" in sys.argv:
         root.after(500, lambda: ask(*foreground()))
+    if "--game" in sys.argv:
+        root.after(500, lambda: game_event("warn", *foreground()))
     if "--remind" in sys.argv:
         root.after(500, remind)
     if "--watch" in sys.argv:

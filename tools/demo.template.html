@@ -40,6 +40,11 @@ h2{font:600 18px/1.2 Fredoka,sans-serif;margin:0 0 8px}
 #music{background:linear-gradient(180deg,#1e3d32,#0f1714);color:#fff;padding:70px 22px;text-align:center}
 .disc{width:170px;height:170px;border-radius:50%;margin:20px auto;background:radial-gradient(circle,#0f1714 18%,#2f8a63 19%,#1e5a42 60%,#0f1714 61%);animation:spin 6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+#game{background:radial-gradient(circle at 50% 30%,#2b3a8a,#0b0f2a);color:#fff}
+.blocks{position:absolute;inset:60px 30px 120px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.blocks i{border-radius:10px;background:hsl(calc(var(--d)*30) 80% 60%);animation:drop 1.6s calc(var(--d)*-0.13s) ease-in-out infinite alternate}
+@keyframes drop{to{transform:translateY(14px) scale(.92)}}
+.gtitle{position:absolute;top:44px;left:0;right:0;text-align:center;font:700 22px Fredoka,sans-serif}
 .homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:9px;background:rgba(255,255,255,.7);z-index:6;border:0;cursor:pointer}
 .meter{position:absolute;left:12px;right:12px;bottom:22px;z-index:6;background:rgba(0,0,0,.55);color:#fff;border-radius:12px;padding:6px 10px;font-size:12px}
 .meter i{display:block;height:6px;border-radius:6px;background:#ffd166;margin-top:4px;width:0}
@@ -69,7 +74,7 @@ ol{margin:0;padding-left:20px}li{margin:4px 0}
 <body>
 <header class="top">
   <h1>Bonk, live demo</h1>
-  <p>A simulated phone running Bonk's real rules, sped up so <b>2 minutes = 15 seconds</b>. The apps are stand-ins: <b>Scrollr</b> for Instagram/Shorts, <b>StreamBox</b> for JioHotstar/Netflix, <b>Tunes</b> for Spotify.</p>
+  <p>A simulated phone running Bonk's real rules, sped up so <b>2 minutes = 15 seconds</b>. The apps are stand-ins: <b>Scrollr</b> for Instagram/Shorts, <b>StreamBox</b> for JioHotstar/Netflix, <b>Tunes</b> for Spotify, <b>Blockfall</b> for any game (45-min sitting = 20 s, 2-hour day = 50 s).</p>
 </header>
 <main class="wrap">
   <section class="desk" aria-label="Simulated phone">
@@ -79,6 +84,7 @@ ol{margin:0;padding-left:20px}li{margin:4px 0}
       <div class="view" id="feed"></div>
       <div class="view" id="stream"><h2 style="color:#fff">StreamBox</h2><div id="tiles"></div></div>
       <div class="view" id="music"><h2>Tunes</h2><div class="disc"></div><b>Study With Me: Deep Focus</b><br><span class="note" style="color:#bfe">Podcast · Episode 12</span></div>
+      <div class="view" id="game"><div class="blocks"><i style="--d:0"></i><i style="--d:1"></i><i style="--d:2"></i><i style="--d:3"></i><i style="--d:4"></i><i style="--d:5"></i><i style="--d:6"></i><i style="--d:7"></i><i style="--d:8"></i><i style="--d:9"></i><i style="--d:10"></i><i style="--d:11"></i></div><b class="gtitle">Blockfall</b></div>
       <div class="view" id="notes" style="background:#fffbe8;color:#3a2a40;padding:60px 20px"><h2>Notes</h2><p>DSA: revise heaps<br>ML lab: finish SVM record<br>Mobile Apps: viva Friday</p></div>
       <div class="toast" id="toast"></div>
       <div class="meter" id="meter" hidden><span id="meterText"></span><i id="meterBar"></i></div>
@@ -102,6 +108,7 @@ ol{margin:0;padding-left:20px}li{margin:4px 0}
       <li>Open <b>StreamBox</b>. Name a show to watch, or admit you're just rotting.</li>
       <li>Open <b>Tunes</b>. Music and podcasts are never touched.</li>
       <li>After a kick, reopen Scrollr and answer "eating lunch". Meals get a longer pass.</li>
+      <li>Play <b>Blockfall</b>. At the sitting limit Bonk warns you, gives you time to finish, then closes it.</li>
     </ol>
     <button class="btn" id="skip" style="margin-top:12px;width:100%">Skip ahead: 30 min on the phone</button>
     <p class="note">Shows the friendly break reminder. It never closes anything.</p></div>
@@ -119,11 +126,14 @@ const PERSONAS = /*PERSONAS*/;
 const R = BonkRender;
 const $ = id => document.getElementById(id);
 const LIMIT = 15, STRIKE_LIMIT = 4, STRIKE_WINDOW = 60, PASS = 20, MEAL_PASS = 45;   // seconds (sped up)
+const G_SESSION = 20, G_DAILY = 50, G_GRACE = 6, G_COOLDOWN = 30, G_BREAK = 8;   // games, sped up
+let gSession = 0, gDaily = 0, gWarnAt = null, gCooldown = 0, gAway = 0, gDailyReason = false;
 const MEAL = "eat eating lunch dinner breakfast meal food snack snacking".split(" ");
 const APPS = [
   {id: "feed", name: "Scrollr", kind: "rot", color: "linear-gradient(135deg,#ff5f6d,#ffc371)", glyph: "S", tag: "short videos"},
   {id: "stream", name: "StreamBox", kind: "watch", color: "linear-gradient(135deg,#1f2a6b,#4d6bff)", glyph: "▶", tag: "movies & series"},
   {id: "music", name: "Tunes", kind: "safe", color: "linear-gradient(135deg,#1db97a,#0f5e45)", glyph: "♪", tag: "music & podcasts"},
+  {id: "game", name: "Blockfall", kind: "game", color: "linear-gradient(135deg,#3b5bff,#8a3bff)", glyph: "▦", tag: "game"},
   {id: "notes", name: "Notes", kind: "none", color: "linear-gradient(135deg,#f9d976,#f39f86)", glyph: "✎", tag: "productive"}
 ];
 const GOOD = "message messages dm dms reply post posting upload class assignment work project call order ticket lecture tutorial notes group event club meeting client check verify otp".split(" ");
@@ -240,14 +250,22 @@ const bot = $("botLayer"), bctx = bot.getContext("2d");
 function kick(app, verdict = "kicked", reason = "") {
   const n = openCase(app.name, verdict, reason);
   const msg = verdict === "rotting" ? line("watch_no", {app: app.name}) : line("caught", {n, app: app.name, mins: Math.round(used / LIMIT * 2)});
-  walkOn(msg, line("done"), true);
+  walkOn(msg, line("done"), true, () => { used = 0; strikeUntil = now() + STRIKE_WINDOW; });
+}
+function gameKick() {
+  const daily = gDailyReason || gDaily >= G_DAILY;
+  if (now() >= gCooldown) openCase("Blockfall", "game over", daily ? "daily limit" : "session limit");
+  walkOn(line(daily ? "game_daily" : "game_kick", {daily: "2 hours"}), line("done"), true, () => {
+    gCooldown = daily ? Infinity : now() + G_COOLDOWN;
+    gSession = 0; gWarnAt = null; gDailyReason = false;
+  });
 }
 function remind() {
   if (busy) return;
   walkOn(line("remind", {mins: 30}), "Take a breather!", false);
 }
 $("skip").addEventListener("click", remind);
-function walkOn(msg, done, closes) {
+function walkOn(msg, done, closes, onEnd) {
   busy = true;
   const W = bot.width, scale = 1.25, bs = 1.9;        // small character, readable bubble
   const boxW = 260 * scale, mid = (W - boxW) / 2, off = W + 10;
@@ -266,10 +284,10 @@ function walkOn(msg, done, closes) {
     if (t >= 3.3 && !grabbed && closes) { grabbed = true; current = "home"; document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "home")); $("meter").hidden = true; }
     bctx.clearRect(0, 0, W, bot.height);
     bctx.drawImage(frames[f], x, y0, boxW, 240 * scale);
-    const text = t >= 1.4 && t < 3.3 ? msg : t >= 3.3 && t < 5 ? done : null;
+    const text = (t >= 1.4 && t < 3.3 ? msg : t >= 3.3 && t < 5 ? done : null) || null;
     if (text) bubble(x + boxW / 2, y0 + 40 * scale, bs, text);
     if (t < 6.2) requestAnimationFrame(step);
-    else { bctx.clearRect(0, 0, W, bot.height); busy = false; if (closes) { used = 0; strikeUntil = now() + STRIKE_WINDOW; } }
+    else { bctx.clearRect(0, 0, W, bot.height); busy = false; if (onEnd) onEnd(); }
   };
   requestAnimationFrame(step);
 }
@@ -293,6 +311,20 @@ setInterval(() => {
   $("clock").textContent = new Date().toTimeString().slice(0, 5);
   const app = APPS.find(a => a.id === current);
   if (!app || busy) return;
+  if (app.kind === "game") {
+    gAway = 0;
+    if (t < gCooldown) return gameKick();
+    gSession += dt; gDaily += dt;
+    $("meterText").textContent = `Game: ${gSession.toFixed(0)} / ${G_SESSION} s sitting · ${gDaily.toFixed(0)} / ${G_DAILY} s today` + (gWarnAt !== null ? ` · finish up: ${Math.max(0, G_GRACE - (t - gWarnAt)).toFixed(0)} s` : "");
+    $("meterBar").style.width = Math.min(100, gSession / G_SESSION * 100) + "%";
+    if (gWarnAt !== null) { if (t - gWarnAt >= G_GRACE) gameKick(); return; }
+    if (gDaily >= G_DAILY || gSession >= G_SESSION) {
+      gDailyReason = gDaily >= G_DAILY; gWarnAt = t;
+      walkOn(line("game_warn"), "", false);
+    }
+    return;
+  }
+  gAway += dt; if (gAway >= G_BREAK) { gSession = 0; gWarnAt = null; }
   if (app.kind === "safe") { $("meterText").textContent = "Safe app: not counted"; $("meterBar").style.width = "0"; return; }
   if (app.kind === "watch") { $("meterText").textContent = "Watching on purpose: not counted"; $("meterBar").style.width = "0"; return; }
   if (app.kind !== "rot") return;

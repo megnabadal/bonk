@@ -98,6 +98,26 @@ public class MainActivity extends Activity {
             }
         }
 
+        header("Games");
+        CheckBox gameOn = new CheckBox(this);
+        gameOn.setText("Limit gaming (any app Android marks as a game, plus the list below)");
+        gameOn.setChecked(Prefs.gameLimits(this));
+        root.addView(gameOn);
+        root.addView(label("Minutes per sitting (you get 2 extra minutes to finish your match)", 14));
+        EditText gameSession = new EditText(this);
+        gameSession.setInputType(InputType.TYPE_CLASS_NUMBER);
+        gameSession.setText(String.valueOf(Prefs.gameSessionMinutes(this)));
+        root.addView(gameSession);
+        root.addView(label("Minutes per day", 14));
+        EditText gameDaily = new EditText(this);
+        gameDaily.setInputType(InputType.TYPE_CLASS_NUMBER);
+        gameDaily.setText(String.valueOf(Prefs.gameDailyMinutes(this)));
+        root.addView(gameDaily);
+        StringBuilder known = new StringBuilder("Recognised games: ");
+        for (Prefs.App a : Prefs.APPS.values()) if (a.kind == Prefs.Kind.GAME) known.append(a.label).append(", ");
+        root.addView(label(known.substring(0, known.length() - 2) + ", and any other game.", 13));
+        root.addView(label("Played today: " + (Prefs.gameMsToday(this) / 60000) + " min", 14));
+
         CheckBox remind = new CheckBox(this);
         remind.setText("Remind me after 30 min on my phone (doesn't close anything)");
         remind.setChecked(Prefs.remind(this));
@@ -124,6 +144,11 @@ public class MainActivity extends Activity {
             Prefs.setEnabled(this, chosen);
             Prefs.setDetectAnywhere(this, anywhere.isChecked());
             Prefs.setRemind(this, remind.isChecked());
+            Prefs.setGameLimits(this, gameOn.isChecked());
+            try {
+                Prefs.setGameMinutes(this, Integer.parseInt(gameSession.getText().toString()),
+                        Integer.parseInt(gameDaily.getText().toString()));
+            } catch (NumberFormatException ignored) {}
             Prefs.setInterrogate(this, ask.isChecked());
             Prefs.setGemini(this, key.getText().toString(), model.getText().toString());
             Prefs.setSync(this, syncUrl.getText().toString(), syncCode.getText().toString());
@@ -141,6 +166,10 @@ public class MainActivity extends Activity {
         button("Test: 30-minute reminder", v -> {
             if (BonkService.instance == null) Toast.makeText(this, "Turn Bonk on first", Toast.LENGTH_SHORT).show();
             else BonkService.instance.remind();
+        });
+        button("Test: gaming warning", v -> {
+            if (BonkService.instance == null) Toast.makeText(this, "Turn Bonk on first", Toast.LENGTH_SHORT).show();
+            else BonkService.instance.gameWarnTest();
         });
         button("Test: interrogate me", v -> {
             BonkService.interrogating = true;
