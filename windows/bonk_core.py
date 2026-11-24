@@ -539,7 +539,7 @@ def interrogate(reason, app, persona, cfg):
     key = cfg.get("gemini_api_key", "").strip()
     if key:
         import time as _time
-        for model in dict.fromkeys([cfg["gemini_model"], "gemini-3.8-flash", "gemini-3.6-flash"]):
+        for model in dict.fromkeys([cfg["gemini_model"], "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"]):
             for attempt in range(3):                      # Google busy (503/429)? wait and retry
                 verdict = _ask_gemini(key, model, reason, app, persona, pass_min, json_mode=True)
                 if verdict:

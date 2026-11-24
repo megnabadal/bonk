@@ -87,6 +87,7 @@ final class Judge {
             java.util.LinkedHashSet<String> models = new java.util.LinkedHashSet<>();
             models.add(Prefs.geminiModel(c));
             models.add(RECOMMENDED_MODEL);
+            models.add(LITE_MODEL);
             models.add(BACKUP_MODEL);
             StringBuilder errors = new StringBuilder();
             for (String model : models) {
@@ -107,6 +108,7 @@ final class Judge {
     }
 
     static final String RECOMMENDED_MODEL = "gemini-3.8-flash";
+    static final String LITE_MODEL = "gemini-3.5-flash-lite";    // lighter, usually less crowded on the free tier
     static final String BACKUP_MODEL = "gemini-3.6-flash";       // used when the main one is overloaded
 
     /**
