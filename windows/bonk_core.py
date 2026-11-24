@@ -473,6 +473,62 @@ def offline_verdict(reason):
     return bool(GOOD_WORDS & set(words))
 
 
+LAST_AI_STATUS = "not tried yet"
+
+
+def _ask_gemini(key, model, reason, app, persona, pass_min, json_mode):
+    """One Gemini call -> (allowed, reply, minutes) or None. Retries without JSON mode on HTTP 400."""
+    global LAST_AI_STATUS
+    import urllib.error
+    prompt = (
+        "You are Bonk, an anti-doomscrolling bot with this personality: "
+        f"{persona['label']}. The user tried to open {app} shortly after being kicked out "
+        f"for scrolling too long. Their reason: \"{reason}\".\n"
+        "ALLOW any specific purpose: talking or replying to a friend or family, sending a "
+        "message or a Snapchat streak, a call, posting something, work, class, a quick lookup. "
+        "DENY only boredom, 'just scrolling', reels/shorts, or no real reason. When in doubt "
+        "about a social or communication reason, allow it.\n"
+        f"If you allow, they get {pass_min} minutes. Reply with ONLY this JSON, nothing else: "
+        '{"allow": true or false, "reply": "one short in-character sentence, max 14 words"}')
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
+    if json_mode:
+        body["generationConfig"] = {"responseMimeType": "application/json"}
+    req = urllib.request.Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        data=json.dumps(body).encode(), method="POST",
+        headers={"Content-Type": "application/json", "x-goog-api-key": key})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            data = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        if e.code == 400 and json_mode:
+            return _ask_gemini(key, model, reason, app, persona, pass_min, json_mode=False)
+        try:
+            msg = json.loads(e.read()).get("error", {}).get("message", "")
+        except Exception:
+            msg = ""
+        LAST_AI_STATUS = f"Gemini error {e.code} ({model}): {msg}"
+        return None
+    except Exception as e:
+        LAST_AI_STATUS = f"Gemini unreachable ({model}): {e}"
+        return None
+    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
+    i, j = text.find("{"), text.rfind("}")
+    if i < 0 or j <= i:
+        LAST_AI_STATUS = f"Gemini answered but not in JSON ({model}): {text[:80]}"
+        return None
+    try:
+        v = json.loads(text[i:j + 1])
+    except ValueError:
+        LAST_AI_STATUS = f"Gemini answered with broken JSON ({model})"
+        return None
+    allowed = bool(v.get("allow"))
+    reply = str(v.get("reply", "")).strip()[:120] or line(persona, "allow" if allowed else "deny", **{"pass": pass_min})
+    LAST_AI_STATUS = f"Gemini works ({model})"
+    return allowed, reply, pass_min
+
+
 def interrogate(reason, app, persona, cfg):
     """Returns (allowed, reply, pass_minutes). Meals always get a meal pass; otherwise
     Gemini judges if a key is set, else offline rules."""
@@ -482,33 +538,9 @@ def interrogate(reason, app, persona, cfg):
     pass_min = cfg["pass_minutes"]
     key = cfg.get("gemini_api_key", "").strip()
     if key:
-        try:
-            prompt = (
-                "You are Bonk, an anti-doomscrolling bot with this personality: "
-                f"{persona['label']}. The user tried to open {app} shortly after being kicked out "
-                f"for scrolling too long. Their reason: \"{reason}\".\n"
-                "ALLOW any specific purpose: talking or replying to a friend or family, sending a "
-                "message or a Snapchat streak, a call, posting something, work, class, a quick lookup. "
-                "DENY only boredom, 'just scrolling', reels/shorts, or no real reason. When in doubt "
-                "about a social or communication reason, allow it.\n"
-                f"If you allow, they get {pass_min} minutes. Reply in JSON: "
-                '{"allow": true|false, "reply": "one short in-character sentence, max 14 words"}')
-            body = {"contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"responseMimeType": "application/json", "temperature": 0.7}}
-            req = urllib.request.Request(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{cfg['gemini_model']}:generateContent",
-                data=json.dumps(body).encode(), method="POST",
-                headers={"Content-Type": "application/json", "x-goog-api-key": key})
-            with urllib.request.urlopen(req, timeout=12) as r:
-                data = json.loads(r.read())
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            verdict = json.loads(text)
-            allowed = bool(verdict.get("allow"))
-            reply = str(verdict.get("reply", "")).strip()[:120]
-            if not reply:
-                reply = line(persona, "allow" if allowed else "deny", **{"pass": pass_min})
-            return allowed, reply, pass_min
-        except Exception:
-            pass
+        for model in dict.fromkeys([cfg["gemini_model"], "gemini-3.8-flash"]):
+            verdict = _ask_gemini(key, model, reason, app, persona, pass_min, json_mode=True)
+            if verdict:
+                return verdict
     allowed = offline_verdict(reason)
     return allowed, line(persona, "allow" if allowed else "deny", **{"pass": pass_min}), pass_min
