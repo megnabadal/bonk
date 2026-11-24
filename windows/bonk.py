@@ -15,6 +15,7 @@ Characters live in ./characters (rendered by tools/render.js).
     python  bonk.py --remind    preview the 30-minute break reminder
     python  bonk.py --game      preview the "2 minutes to finish your match" warning
     python  bonk.py --report    open your weekly investigation report
+    python  bonk.py --testai    check that your Gemini key works
     python  bonk.py --characters  list characters (set "character" in config.json)
 """
 import ctypes
@@ -261,6 +262,12 @@ class Interrogation:
 # ---------------------------------------------------------------- main loop
 def main():
     cfg = core.load_config()
+    if "--testai" in sys.argv:
+        ch = core.load_character(cfg["character"])
+        ok, reply, _ = core.interrogate("replying to my friend's message", "Instagram", ch["persona"], cfg)
+        print(core.LAST_AI_STATUS)
+        print("Sample:", reply)
+        return
     if "--characters" in sys.argv:
         for c in core.list_characters():
             print(f"{c['id']:18} {c['name']}")

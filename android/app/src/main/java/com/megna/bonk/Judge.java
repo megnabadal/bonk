@@ -83,9 +83,12 @@ final class Judge {
         int pass = Prefs.passMinutes(c);
         String key = Prefs.geminiKey(c);
         if (!key.isEmpty()) {
-            Verdict v = askGemini(c, key, Prefs.geminiModel(c), reason, app, persona, pass);
-            if (v == null && !Prefs.geminiModel(c).equals(FALLBACK_MODEL)) {
-                v = askGemini(c, key, FALLBACK_MODEL, reason, app, persona, pass);   // model name changed?
+            String model = Prefs.geminiModel(c);
+            Verdict v = askGemini(c, key, model, reason, app, persona, pass, true);
+            if (v == null && !model.equals(RECOMMENDED_MODEL)) {
+                String first = Prefs.aiStatus(c);
+                v = askGemini(c, key, RECOMMENDED_MODEL, reason, app, persona, pass, true);
+                if (v == null) Prefs.setAiStatus(c, first + "\n" + Prefs.aiStatus(c));
             }
             if (v != null) return v;
         }
@@ -93,77 +96,90 @@ final class Judge {
         return new Verdict(allowed, persona.line(allowed ? "allow" : "deny", Characters.vars("pass", pass)), pass);
     }
 
-    static final String FALLBACK_MODEL = "gemini-2.5-flash";
+    static final String RECOMMENDED_MODEL = "gemini-3.8-flash";
 
-    /** One Gemini call. Returns null on any failure and remembers why in Prefs.aiStatus. */
+    /**
+     * One Gemini call. Returns null on failure and stores the reason in Prefs.aiStatus.
+     * If the server rejects the JSON-output setting, retries once without it.
+     */
     private static Verdict askGemini(Context c, String key, String model, String reason, String app,
-                                     Characters.Persona persona, int pass) {
-        {
-            try {
-                String prompt = "You are Bonk, an anti-doomscrolling bot with this personality: "
-                        + persona.label() + ". The user tried to open " + app
-                        + " shortly after being kicked out for scrolling too long. Their reason: \""
-                        + reason + "\".\nALLOW any specific purpose: talking or replying to a friend or family, "
-                        + "sending a message or a Snapchat streak, a call, posting something, work, class, "
-                        + "a quick lookup. DENY only boredom, 'just scrolling', reels/shorts, or no real reason. "
-                        + "When in doubt about a social or communication reason, allow it.\n"
-                        + "If you allow, they get " + pass + " minutes. Reply in JSON: "
-                        + "{\"allow\": true|false, \"reply\": \"one short in-character sentence, max 14 words\"}";
-                JSONObject body = new JSONObject()
-                        .put("contents", new JSONArray().put(new JSONObject()
-                                .put("parts", new JSONArray().put(new JSONObject().put("text", prompt)))))
-                        .put("generationConfig", new JSONObject()
-                                .put("responseMimeType", "application/json").put("temperature", 0.7));
+                                     Characters.Persona persona, int pass, boolean jsonMode) {
+        try {
+            String prompt = "You are Bonk, an anti-doomscrolling bot with this personality: "
+                    + persona.label() + ". The user tried to open " + app
+                    + " shortly after being kicked out for scrolling too long. Their reason: \""
+                    + reason + "\".\nALLOW any specific purpose: talking or replying to a friend or family, "
+                    + "sending a message or a Snapchat streak, a call, posting something, work, class, "
+                    + "a quick lookup. DENY only boredom, 'just scrolling', reels/shorts, or no real reason. "
+                    + "When in doubt about a social or communication reason, allow it.\n"
+                    + "If you allow, they get " + pass + " minutes. Reply with ONLY this JSON, nothing else: "
+                    + "{\"allow\": true or false, \"reply\": \"one short in-character sentence, max 14 words\"}";
+            JSONObject body = new JSONObject().put("contents", new JSONArray().put(new JSONObject()
+                    .put("parts", new JSONArray().put(new JSONObject().put("text", prompt)))));
+            if (jsonMode) body.put("generationConfig", new JSONObject().put("responseMimeType", "application/json"));
 
-                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/"
-                        + model + ":generateContent");
-                HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                con.setRequestMethod("POST");
-                con.setDoOutput(true);
-                con.setConnectTimeout(8000);
-                con.setReadTimeout(12000);
-                con.setRequestProperty("Content-Type", "application/json");
-                con.setRequestProperty("x-goog-api-key", key);
-                try (OutputStream out = con.getOutputStream()) { out.write(body.toString().getBytes(StandardCharsets.UTF_8)); }
-                int code = con.getResponseCode();
-                if (code != 200) {
-                    String err = "";
-                    try (InputStream es = con.getErrorStream()) {
-                        if (es != null) {
-                            ByteArrayOutputStream eb = new ByteArrayOutputStream();
-                            byte[] bb = new byte[4096];
-                            int k;
-                            while ((k = es.read(bb)) > 0) eb.write(bb, 0, k);
-                            err = new JSONObject(eb.toString("UTF-8")).getJSONObject("error").optString("message", "");
-                        }
-                    } catch (Exception ignored) {}
-                    Prefs.setAiStatus(c, "Gemini error " + code + " (" + model + "): " + err);
-                    return null;
+            HttpURLConnection con = (HttpURLConnection) new URL(
+                    "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent").openConnection();
+            con.setRequestMethod("POST");
+            con.setDoOutput(true);
+            con.setConnectTimeout(10000);
+            con.setReadTimeout(25000);                      // thinking models can take a while
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("x-goog-api-key", key);
+            try (OutputStream out = con.getOutputStream()) { out.write(body.toString().getBytes(StandardCharsets.UTF_8)); }
+
+            int code = con.getResponseCode();
+            String resp = readAll(code == 200 ? con.getInputStream() : con.getErrorStream());
+            con.disconnect();
+            if (code != 200) {
+                String err = "";
+                try { err = new JSONObject(resp).getJSONObject("error").optString("message", ""); } catch (Exception ignored) {}
+                if (code == 400 && jsonMode) {               // JSON-output setting not accepted: try plain text
+                    return askGemini(c, key, model, reason, app, persona, pass, false);
                 }
-                String resp;
-                try (InputStream in = con.getInputStream()) {
-                    ByteArrayOutputStream buf = new ByteArrayOutputStream();
-                    byte[] b = new byte[8192];
-                    int n;
-                    while ((n = in.read(b)) > 0) buf.write(b, 0, n);
-                    resp = buf.toString("UTF-8");
-                }
-                con.disconnect();
-                String text = new JSONObject(resp).getJSONArray("candidates").getJSONObject(0)
-                        .getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-                JSONObject v = new JSONObject(text);
-                boolean allowed = v.optBoolean("allow", false);
-                String reply = v.optString("reply", "").trim();
-                if (reply.isEmpty()) reply = persona.line(allowed ? "allow" : "deny", Characters.vars("pass", pass));
-                Verdict out = new Verdict(allowed, reply.length() > 120 ? reply.substring(0, 120) : reply, pass);
-                out.byAi = true;
-                Prefs.setAiStatus(c, "Gemini works (" + model + ")");
-                return out;
-            } catch (Exception e) {
-                Prefs.setAiStatus(c, "Gemini unreachable (" + model + "): " + e.getClass().getSimpleName()
-                        + (e.getMessage() == null ? "" : " " + e.getMessage()));
+                Prefs.setAiStatus(c, "Gemini error " + code + " (" + model + "): " + err);
                 return null;
             }
+
+            // join every non-"thought" text part (newer models may send their thinking first)
+            StringBuilder text = new StringBuilder();
+            JSONArray parts = new JSONObject(resp).getJSONArray("candidates").getJSONObject(0)
+                    .getJSONObject("content").getJSONArray("parts");
+            for (int i = 0; i < parts.length(); i++) {
+                JSONObject part = parts.getJSONObject(i);
+                if (part.optBoolean("thought", false)) continue;
+                text.append(part.optString("text", ""));
+            }
+            String t = text.toString();
+            int open = t.indexOf('{'), close = t.lastIndexOf('}');
+            if (open < 0 || close <= open) {
+                Prefs.setAiStatus(c, "Gemini answered but not in JSON (" + model + "): "
+                        + (t.length() > 80 ? t.substring(0, 80) + "..." : t));
+                return null;
+            }
+            JSONObject v = new JSONObject(t.substring(open, close + 1));
+            boolean allowed = v.optBoolean("allow", false);
+            String reply = v.optString("reply", "").trim();
+            if (reply.isEmpty()) reply = persona.line(allowed ? "allow" : "deny", Characters.vars("pass", pass));
+            Verdict out = new Verdict(allowed, reply.length() > 120 ? reply.substring(0, 120) : reply, pass);
+            out.byAi = true;
+            Prefs.setAiStatus(c, "Gemini works (" + model + ")");
+            return out;
+        } catch (Exception e) {
+            Prefs.setAiStatus(c, "Gemini unreachable (" + model + "): " + e.getClass().getSimpleName()
+                    + (e.getMessage() == null ? "" : " " + e.getMessage()));
+            return null;
+        }
+    }
+
+    private static String readAll(InputStream in) throws java.io.IOException {
+        if (in == null) return "";
+        try (InputStream s = in) {
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            byte[] b = new byte[8192];
+            int n;
+            while ((n = s.read(b)) > 0) buf.write(b, 0, n);
+            return buf.toString("UTF-8");
         }
     }
 }
