@@ -89,7 +89,8 @@ public class InterrogateActivity extends Activity {
                 Judge.Verdict v = Judge.judge(this, reason, app, persona);
                 passMinutes = v.passMinutes;
                 handler.post(() -> {
-                    q.setText(v.reply);
+                    q.setText(v.allowed || v.byAi ? v.reply
+                            : v.reply + "\n\n(Judged by offline rules: AI not connected. See Settings → Test Gemini key.)");
                     q.setTextColor(Color.parseColor(v.allowed ? "#2E7D32" : "#B3261E"));
                     handler.postDelayed(() -> done(v.allowed, reason), 1800);
                 });

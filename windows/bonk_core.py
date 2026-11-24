@@ -438,11 +438,14 @@ class Sync:
 
 
 # ------------------------------------------------------------------ interrogation
-GOOD_WORDS = {"message", "messages", "dm", "dms", "reply", "post", "posting", "upload", "class",
-              "assignment", "work", "project", "call", "order", "ticket", "lecture", "tutorial",
-              "notes", "group", "event", "club", "meeting", "client", "check", "verify", "otp"}
-BAD_WORDS = {"bored", "boring", "scroll", "scrolling", "reels", "reel", "shorts", "timepass",
-             "nothing", "idk", "dunno", "chill", "relax", "fun", "vibe", "just"}
+GOOD_WORDS = {"message", "messages", "messaging", "dm", "dms", "reply", "replying", "text", "texting", "chat",
+              "chatting", "talk", "talking", "friend", "friends", "family", "mom", "mum", "amma", "dad", "brother",
+              "sister", "streak", "streaks", "snap", "snaps", "send", "sending", "call", "calling", "video", "post",
+              "posting", "upload", "story", "class", "assignment", "work", "project", "order", "ticket", "lecture",
+              "tutorial", "notes", "group", "event", "club", "meeting", "client", "check", "verify", "otp",
+              "birthday", "wish"}
+BAD_WORDS = {"bored", "boring", "scroll", "scrolling", "reels", "reel", "shorts", "timepass", "nothing", "idk",
+             "dunno", "chill", "relax", "vibe", "vibing", "random", "whatever"}
 
 
 VAGUE = {"idk", "anything", "something", "nothing", "whatever", "random", "dunno", "bored", "scroll",
@@ -465,7 +468,7 @@ def is_meal(reason):
 def offline_verdict(reason):
     """Rule-based judge used when there's no API key or the AI call fails."""
     words = re.findall(r"[a-z']+", reason.lower())
-    if len(words) < 3 or BAD_WORDS & set(words):
+    if len(words) < 2 or BAD_WORDS & set(words):
         return False
     return bool(GOOD_WORDS & set(words))
 
@@ -484,8 +487,10 @@ def interrogate(reason, app, persona, cfg):
                 "You are Bonk, an anti-doomscrolling bot with this personality: "
                 f"{persona['label']}. The user tried to open {app} shortly after being kicked out "
                 f"for scrolling too long. Their reason: \"{reason}\".\n"
-                "Allow only specific, purposeful reasons (replying to someone, posting, work, "
-                "class, a quick lookup). Deny boredom, vague answers, or 'just one more'.\n"
+                "ALLOW any specific purpose: talking or replying to a friend or family, sending a "
+                "message or a Snapchat streak, a call, posting something, work, class, a quick lookup. "
+                "DENY only boredom, 'just scrolling', reels/shorts, or no real reason. When in doubt "
+                "about a social or communication reason, allow it.\n"
                 f"If you allow, they get {pass_min} minutes. Reply in JSON: "
                 '{"allow": true|false, "reply": "one short in-character sentence, max 14 words"}')
             body = {"contents": [{"parts": [{"text": prompt}]}],
