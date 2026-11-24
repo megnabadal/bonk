@@ -15,7 +15,10 @@
     "watch_ok": "Noted: {title}. Enjoy it. I'm watching.",
     "watch_no": "Loitering. Case closed.",
     "remind": "Surveillance report: {mins} minutes on the phone. Time to stretch.",
-    "meal": "Eating, noted. {pass} minutes, then case reopens."
+    "meal": "Eating, noted. {pass} minutes, then case reopens.",
+    "game_warn": "GG. Wrap it up. You have 2 minutes.",
+    "game_kick": "Game over. Case closed.",
+    "game_daily": "That's your {daily} of gaming today. Case closed till tomorrow."
   },
   "closer": {
     "label": "Sharp-suited closer",
@@ -32,7 +35,10 @@
     "watch_ok": "{title}. Solid choice. Enjoy.",
     "watch_no": "No plan, no deal. Closing it.",
     "remind": "{mins} minutes on the phone. Even closers take breaks.",
-    "meal": "Eat well. {pass} minutes, then back to winning."
+    "meal": "Eat well. {pass} minutes, then back to winning.",
+    "game_warn": "Close out this round. 2 minutes.",
+    "game_kick": "Match over. Time to close real deals.",
+    "game_daily": "{daily} of gaming today. The market's closed."
   },
   "chatterbox": {
     "label": "Fast-talking coffee lover",
@@ -49,7 +55,10 @@
     "watch_ok": "Yes! {title}! Get snacks, go!",
     "watch_no": "Browsing forever? Not on my watch. Bye!",
     "remind": "Okay, {mins} minutes of phone! Water? Stretch? Window? Go!",
-    "meal": "Snack time! {pass} minutes, enjoy every bite!"
+    "meal": "Snack time! {pass} minutes, enjoy every bite!",
+    "game_warn": "Okay okay, finish this match! 2 minutes, go go go!",
+    "game_kick": "GG! Okay bye bye game!",
+    "game_daily": "{daily} of games today?! That's the max, see you tomorrow!"
   },
   "goofy_dad": {
     "label": "Goofy dad",
@@ -66,7 +75,10 @@
     "watch_ok": "{title}? Great pick, kiddo!",
     "watch_no": "No pick, no flick. Off we go!",
     "remind": "Hey champ, {mins} minutes on that phone. Go stretch those legs!",
-    "meal": "Lunch and a show? Classic. {pass} minutes, kiddo."
+    "meal": "Lunch and a show? Classic. {pass} minutes, kiddo.",
+    "game_warn": "Two more minutes, champ, then controller down!",
+    "game_kick": "Game over, sport! High five?",
+    "game_daily": "That's {daily} of gaming today. Dad's closing the arcade."
   },
   "mind_reader": {
     "label": "Smug mind reader",
@@ -83,7 +95,10 @@
     "watch_ok": "{title}. Hm, I didn't see that coming. Enjoy.",
     "watch_no": "As I suspected. Just rotting.",
     "remind": "{mins} minutes. You were about to check one more thing. Don't.",
-    "meal": "Eating. I believe you. {pass} minutes."
+    "meal": "Eating. I believe you. {pass} minutes.",
+    "game_warn": "You're thinking 'one more match'. You get 2 minutes.",
+    "game_kick": "Told you it was the last one.",
+    "game_daily": "{daily} today. I knew you'd try for more."
   },
   "strict_cop": {
     "label": "Strict cop",
@@ -100,7 +115,10 @@
     "watch_ok": "{title}. Approved. Carry on.",
     "watch_no": "No title, no entry.",
     "remind": "{mins} minutes on the device. Mandatory break.",
-    "meal": "Meal break approved. {pass} minutes."
+    "meal": "Meal break approved. {pass} minutes.",
+    "game_warn": "Final warning. 2 minutes to finish.",
+    "game_kick": "Game confiscated. Move along.",
+    "game_daily": "Daily gaming limit of {daily} reached. Come back tomorrow."
   },
   "cheerleader": {
     "label": "Cheerleader",
@@ -117,6 +135,9 @@
     "watch_ok": "{title}! Love that for you! Enjoy!",
     "watch_no": "Aww, rotting isn't resting! Go do something fun!",
     "remind": "{mins} minutes on your phone! Stretch break, you've earned it!",
-    "meal": "Yay, food! Enjoy {pass} minutes!"
+    "meal": "Yay, food! Enjoy {pass} minutes!",
+    "game_warn": "Great game! 2 minutes to finish strong!",
+    "game_kick": "GG! You were awesome! Break time!",
+    "game_daily": "That's {daily} of fun today! See you tomorrow, champ!"
   }
 }

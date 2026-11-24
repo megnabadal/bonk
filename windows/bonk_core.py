@@ -34,6 +34,16 @@ DEFAULT_CONFIG = {
     "safe_keywords": ["spotify", "podcast", "youtube music", "lecture", "tutorial", "nptel", "course",
                       "coursera", "udemy", "leetcode", "github", "docs", "audible"],
     "watch_pass_hours": 3,
+    # games: limits per sitting and per day, with a warning so you can finish your match
+    "game_session_minutes": 45,
+    "game_daily_minutes": 120,
+    "game_grace_minutes": 2,
+    "game_cooldown_minutes": 15,
+    "game_exes": ["valorant", "fortnite", "minecraft", "robloxplayerbeta", "cod", "modernwarfare", "blackops",
+                  "fc24", "fc25", "fc26", "fifa", "efootball", "genshinimpact", "leagueclient", "league of legends",
+                  "cs2", "csgo", "gta5", "rocketleague", "apex", "r5apex", "overwatch", "dota2", "pubg",
+                  "brawlhalla", "amongus", "eldenring", "cyberpunk2077", "bgmi"],
+    "game_folders": ["steamapps\\common", "epic games", "riot games", "xboxgames", "ea games", "ubisoft game launcher\\games"],
     "browsers": ["chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe", "vivaldi.exe"],
     # AI interrogation: when you go back to a blocked site soon after a kick, Bonk asks why
     "interrogate": True,
@@ -80,6 +90,14 @@ def classify(title, cfg):
     if any(k in t for k in cfg["watch_keywords"]):
         return "watch"
     return None
+
+
+def is_game(exe, path, cfg):
+    """A game by exe name or by living in a game launcher's install folder."""
+    e, p = exe.lower(), path.lower()
+    if any(k in e for k in cfg["game_exes"]):
+        return True
+    return any(f in p for f in cfg["game_folders"])
 
 
 def is_distracting(title, cfg):
@@ -184,6 +202,58 @@ class Tracker:
         self.pass_until = now + (minutes or self.cfg["pass_minutes"]) * 60
 
 
+class GameTracker:
+    """Gaming time per sitting and per day.
+    add() returns None, 'warn' (start the 2-minute finish window) or 'kick'.
+    A 5-minute break ends a sitting. After a kick there's a cooldown; after the daily
+    budget is used, games stay closed until midnight."""
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.session, self.away = 0.0, 0.0
+        self.daily = {}                   # 'YYYY-MM-DD' -> seconds
+        self.warned_at = None
+        self.cooldown_until = 0.0
+        self.reason = "session"
+
+    def today_seconds(self, date):
+        return self.daily.get(date, 0.0)
+
+    def add(self, now, dt_s, gaming, date):
+        if not gaming:
+            self.away += dt_s
+            if self.away >= 300:
+                self.session, self.warned_at = 0.0, None
+            return None
+        self.away = 0.0
+        if now < self.cooldown_until:
+            return "kick"
+        self.daily[date] = self.daily.get(date, 0.0) + dt_s
+        self.session += dt_s
+        if self.warned_at is not None:
+            return "kick" if now - self.warned_at >= self.cfg["game_grace_minutes"] * 60 else None
+        if self.daily[date] >= self.cfg["game_daily_minutes"] * 60:
+            self.reason, self.warned_at = "daily", now
+            return "warn"
+        if self.session >= self.cfg["game_session_minutes"] * 60:
+            self.reason, self.warned_at = "session", now
+            return "warn"
+        return None
+
+    def kicked(self, now, date):
+        self.session, self.warned_at = 0.0, None
+        if self.daily.get(date, 0.0) >= self.cfg["game_daily_minutes"] * 60:
+            midnight = dt.datetime.combine(dt.date.fromisoformat(date) + dt.timedelta(days=1), dt.time())
+            self.cooldown_until = midnight.timestamp()
+        else:
+            self.cooldown_until = now + self.cfg["game_cooldown_minutes"] * 60
+
+
+def daily_label(minutes):
+    h, m = divmod(int(minutes), 60)
+    return (f"{h} hour{'s' if h != 1 else ''}" if h else "") + (f" {m} min" if m else "") or "0 min"
+
+
 class Reminder:
     """Counts entertainment time in one sitting; nudges every `remind_minutes`.
     A break of 2+ minutes away from entertainment starts a fresh sitting."""
@@ -254,7 +324,7 @@ def weekly_summary(cases, today=None):
     today = today or dt.date.today()
     start = today - dt.timedelta(days=6)
     week = [c for c in cases if dt.date.fromisoformat(c["ts"][:10]) >= start]
-    kicks = [c for c in week if c["verdict"] in ("kicked", "denied", "rotting")]
+    kicks = [c for c in week if c["verdict"] in ("kicked", "denied", "rotting", "game over")]
     by_app = collections.Counter(c["app"] for c in kicks)
     by_hour = collections.Counter(int(c["ts"][11:13]) for c in kicks)
     by_device = collections.Counter(c["device"] for c in kicks)

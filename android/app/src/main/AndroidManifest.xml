@@ -4,6 +4,14 @@
     <!-- only used for the optional AI interrogation and phone-laptop sync -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- lets Bonk see whether an installed app is a game (Android 11+ package visibility) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:label="Bonk"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">

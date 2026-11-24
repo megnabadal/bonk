@@ -23,11 +23,15 @@ Works on **Android** (Java, Accessibility Service) and **Windows** (Python, stan
 | YouTube | Long videos, lectures | Left alone. Only Shorts or endless swiping count. |
 | Streaming | JioHotstar, Netflix, Prime Video, SonyLIV, ZEE5, MX Player | Asks "watching something, or just rotting?" Name a title and get a 3-hour pass. |
 | Never touched | Spotify, YouTube Music, podcasts, Audible, Duolingo, Coursera, Udemy, Kindle | Ignored completely. |
+| Games | BGMI, Free Fire, Call of Duty: Mobile, Brawl Stars, Clash of Clans, Clash Royale, eFootball, EA SPORTS FC Mobile, Subway Surfers, Candy Crush, Ludo King, Minecraft, Roblox, Genshin Impact, Among Us, 8 Ball Pool, Pokémon GO, Asphalt, Stumble Guys… plus **any app Android marks as a game** | 45-minute sittings and **2 hours a day**. At the limit Bonk warns you and gives you **2 minutes to finish your match**, then closes it. Reopening within 15 min (or after the daily 2 hours, until midnight) gets closed right away. Games never trigger the swipe detector or the 30-min reminder. |
 | Any other app | anything | Optional: fast endless swiping (6+ swipes a minute) counts as rotting. |
 
 Detection reads only which app is open, scroll events and view IDs (to spot Reels/Shorts
 screens). It never reads what's on screen. View IDs are best effort: apps change them in updates.
-On the laptop, Bonk decides from the window title (e.g. "#shorts - YouTube" is rot, a named video
+On the laptop, games are recognised by their program (Valorant, Fortnite, Minecraft, Roblox, CoD, EA FC,
+eFootball, CS2, GTA V, …) or by being installed in a Steam, Epic, Riot, Xbox, EA or Ubisoft games folder.
+Fullscreen games may hide Bonk's window; the game is still closed when time is up.
+For everything else, Bonk decides from the window title (e.g. "#shorts - YouTube" is rot, a named video
 is "watching", "lecture" or "podcast" is safe).
 
 **Try it without installing:** open `tools/demo.html`, a sped-up simulated phone running these rules.
@@ -63,6 +67,7 @@ python bonk.py --test        :: character arrives in 3 s - switch to an Instagra
 python bonk.py --ask         :: preview the interrogation
 python bonk.py --watch       :: preview the "watching or rotting?" check
 python bonk.py --remind      :: preview the 30-minute break reminder
+python bonk.py --game        :: preview the "2 minutes to finish your match" warning
 python bonk.py --report      :: open your weekly investigation report
 python bonk.py --characters  :: list characters (set "character" in config.json)
 start_bonk.bat               :: run in the background (put a shortcut in shell:startup)

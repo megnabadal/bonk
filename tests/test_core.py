@@ -88,6 +88,26 @@ def test_meal_pass_and_reminder():
     assert r.used == 0
 
 
+def test_games():
+    c = cfg()
+    assert core.is_game("valorant.exe", r"C:\Riot Games\VALORANT\live\VALORANT.exe", c)
+    assert core.is_game("somegame.exe", r"D:\SteamLibrary\steamapps\common\Thing\somegame.exe", c)
+    assert not core.is_game("chrome.exe", r"C:\Program Files\Google\Chrome\chrome.exe", c)
+    g = core.GameTracker(c)
+    d = "2026-11-24"
+    assert g.add(0, 44 * 60, True, d) is None
+    assert g.add(1, 60, True, d) == "warn"            # 45-min sitting -> 2 minutes to finish
+    assert g.add(60, 60, True, d) is None
+    assert g.add(121, 1, True, d) == "kick"
+    g.kicked(121, d)
+    assert g.add(200, 1, True, d) == "kick"           # cooldown: reopening gets closed
+    g2 = core.GameTracker(c)
+    for i in range(3):                                # three 40-min sittings with breaks
+        g2.add(i * 10000, 40 * 60, True, d); g2.add(i * 10000 + 1, 400, False, d)
+    assert g2.add(30001, 1, True, d) == "warn" and g2.reason == "daily"
+    assert core.daily_label(120) == "2 hours"
+
+
 def test_sync_disabled_without_config():
     assert not core.Sync(cfg()).enabled
 

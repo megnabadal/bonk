@@ -46,6 +46,10 @@ public class BonkService extends AccessibilityService {
     private String currentPkg = "";
     private long usedMs, lastSeen, lastTick, lastScan, lastSwipe;
     private long phoneMs, offMs;                          // for the 30-minute reminder
+    private long gameSessionMs, gameAwayMs, gameWarnedAt = -1;
+    private boolean gameDailyReason;
+    private static final long GAME_GRACE_MS = 2 * 60_000;     // time to finish the match
+    private static final long GAME_BREAK_MS = 5 * 60_000;     // a break this long ends a sitting
     private boolean shortFormOnScreen, calmScreen;
     private final ArrayDeque<Long> swipes = new ArrayDeque<>();
 
@@ -153,7 +157,7 @@ public class BonkService extends AccessibilityService {
     /** Is what's on screen right now rotting? */
     private boolean rotting() {
         Prefs.Kind kind = Prefs.kindOf(this, currentPkg);
-        if (kind == Prefs.Kind.SAFE || kind == Prefs.Kind.WATCH) return false;
+        if (kind == Prefs.Kind.SAFE || kind == Prefs.Kind.WATCH || kind == Prefs.Kind.GAME) return false;
         if (kind == Prefs.Kind.ROT) {
             if (calmScreen) return false;                                   // DMs, messages
             if (currentPkg.equals("com.google.android.youtube")) return shortFormOnScreen || swipingFast();
@@ -179,7 +183,11 @@ public class BonkService extends AccessibilityService {
             return;
         }
         offMs = 0;
-        if (Prefs.kindOf(this, currentPkg) != Prefs.Kind.SAFE) phoneMs += dt;
+        Prefs.Kind kindNow = Prefs.kindOf(this, currentPkg);
+        if (kindNow == Prefs.Kind.GAME) { gameTick(dt); return; }   // games have their own limits
+        gameAwayMs += dt;
+        if (gameAwayMs >= GAME_BREAK_MS) { gameSessionMs = 0; gameWarnedAt = -1; }
+        if (kindNow != Prefs.Kind.SAFE) phoneMs += dt;
         if (Prefs.remind(this) && phoneMs >= Prefs.remindMinutes(this) * 60_000L) {
             phoneMs = 0;
             remind();
@@ -232,6 +240,60 @@ public class BonkService extends AccessibilityService {
         lp.y = (int) (80 * getResources().getDisplayMetrics().density);
         wm.addView(bot, lp);
         bot.start();
+    }
+
+    /** Gaming: after the sitting or daily limit, warn; 2 minutes later, close the game. */
+    private void gameTick(long dt) {
+        gameAwayMs = 0;
+        long wall = System.currentTimeMillis();
+        if (wall < Prefs.gameCooldownUntil(this)) { gameKick(); return; }     // reopened too soon
+        Prefs.addGameMs(this, dt);
+        gameSessionMs += dt;
+        long now = SystemClock.elapsedRealtime();
+        if (gameWarnedAt >= 0) {
+            if (now - gameWarnedAt >= GAME_GRACE_MS) gameKick();
+            return;
+        }
+        boolean daily = Prefs.gameMsToday(this) >= Prefs.gameDailyMinutes(this) * 60_000L;
+        boolean session = gameSessionMs >= Prefs.gameSessionMinutes(this) * 60_000L;
+        if (daily || session) {
+            gameDailyReason = daily;
+            gameWarnedAt = now;
+            Characters.Info ch = Characters.current(this);
+            Characters.Persona persona = Characters.persona(this, ch.personality);
+            bot = new BotView(this, ch.id, persona.line("game_warn", null), "", null, this::removeBot);
+            addBot();
+        }
+    }
+
+    private void gameKick() {
+        if (bot != null || wm == null) return;
+        boolean daily = gameDailyReason || Prefs.gameMsToday(this) >= Prefs.gameDailyMinutes(this) * 60_000L;
+        Characters.Info ch = Characters.current(this);
+        Characters.Persona persona = Characters.persona(this, ch.personality);
+        String app = Prefs.appLabel(currentPkg);
+        if (System.currentTimeMillis() >= Prefs.gameCooldownUntil(this)) {
+            Cases.open(this, app, gameSessionMs / 60000.0, "game over", daily ? "daily limit" : "session limit");
+        }
+        int dm = Prefs.gameDailyMinutes(this);
+        String dailyText = (dm / 60 > 0 ? (dm / 60) + (dm / 60 == 1 ? " hour" : " hours") : "")
+                + (dm % 60 > 0 ? " " + (dm % 60) + " min" : "");
+        String msg = persona.line(daily ? "game_daily" : "game_kick", Characters.vars("daily", dailyText.trim()));
+        bot = new BotView(this, ch.id, msg, persona.line("done", null),
+                () -> performGlobalAction(GLOBAL_ACTION_HOME), this::removeBot);
+        addBot();
+        Prefs.setGameCooldown(this, daily);
+        gameSessionMs = 0;
+        gameWarnedAt = -1;
+        gameDailyReason = false;
+    }
+
+    /** Preview for the settings screen. */
+    void gameWarnTest() {
+        if (bot != null || wm == null) return;
+        Characters.Info ch = Characters.current(this);
+        bot = new BotView(this, ch.id, Characters.persona(this, ch.personality).line("game_warn", null), "", null, this::removeBot);
+        addBot();
     }
 
     /** A friendly nudge: walk in, talk, wave, walk out. Nothing gets closed. */
