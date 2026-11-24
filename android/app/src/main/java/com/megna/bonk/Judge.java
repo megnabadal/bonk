@@ -23,6 +23,7 @@ final class Judge {
         final boolean allowed;
         final String reply;
         final int passMinutes;
+        boolean byAi;                       // false = offline keyword rules decided
         Verdict(boolean allowed, String reply, int passMinutes) {
             this.allowed = allowed; this.reply = reply; this.passMinutes = passMinutes;
         }
@@ -37,12 +38,14 @@ final class Judge {
     }
 
     private static final Set<String> GOOD = new HashSet<>(Arrays.asList(
-            "message", "messages", "dm", "dms", "reply", "post", "posting", "upload", "class",
-            "assignment", "work", "project", "call", "order", "ticket", "lecture", "tutorial",
-            "notes", "group", "event", "club", "meeting", "client", "check", "verify", "otp"));
+            "message", "messages", "messaging", "dm", "dms", "reply", "replying", "text", "texting", "chat", "chatting",
+            "talk", "talking", "friend", "friends", "family", "mom", "mum", "amma", "dad", "brother", "sister",
+            "streak", "streaks", "snap", "snaps", "send", "sending", "call", "calling", "video", "post", "posting",
+            "upload", "story", "class", "assignment", "work", "project", "order", "ticket", "lecture", "tutorial",
+            "notes", "group", "event", "club", "meeting", "client", "check", "verify", "otp", "birthday", "wish"));
     private static final Set<String> BAD = new HashSet<>(Arrays.asList(
-            "bored", "boring", "scroll", "scrolling", "reels", "reel", "shorts", "timepass",
-            "nothing", "idk", "dunno", "chill", "relax", "fun", "vibe", "just"));
+            "bored", "boring", "scroll", "scrolling", "reels", "reel", "shorts", "timepass", "nothing", "idk",
+            "dunno", "chill", "relax", "vibe", "vibing", "random", "whatever"));
 
     private static final Set<String> VAGUE = new HashSet<>(Arrays.asList(
             "idk", "anything", "something", "nothing", "whatever", "random", "dunno", "bored",
@@ -68,7 +71,7 @@ final class Judge {
             if (BAD.contains(w)) return false;
             if (GOOD.contains(w)) good = true;
         }
-        return count >= 3 && good;
+        return count >= 2 && good;
     }
 
     /** Blocking (network): call off the main thread. */
@@ -80,12 +83,30 @@ final class Judge {
         int pass = Prefs.passMinutes(c);
         String key = Prefs.geminiKey(c);
         if (!key.isEmpty()) {
+            Verdict v = askGemini(c, key, Prefs.geminiModel(c), reason, app, persona, pass);
+            if (v == null && !Prefs.geminiModel(c).equals(FALLBACK_MODEL)) {
+                v = askGemini(c, key, FALLBACK_MODEL, reason, app, persona, pass);   // model name changed?
+            }
+            if (v != null) return v;
+        }
+        boolean allowed = offline(reason);
+        return new Verdict(allowed, persona.line(allowed ? "allow" : "deny", Characters.vars("pass", pass)), pass);
+    }
+
+    static final String FALLBACK_MODEL = "gemini-2.5-flash";
+
+    /** One Gemini call. Returns null on any failure and remembers why in Prefs.aiStatus. */
+    private static Verdict askGemini(Context c, String key, String model, String reason, String app,
+                                     Characters.Persona persona, int pass) {
+        {
             try {
                 String prompt = "You are Bonk, an anti-doomscrolling bot with this personality: "
                         + persona.label() + ". The user tried to open " + app
                         + " shortly after being kicked out for scrolling too long. Their reason: \""
-                        + reason + "\".\nAllow only specific, purposeful reasons (replying to someone, "
-                        + "posting, work, class, a quick lookup). Deny boredom, vague answers, or 'just one more'.\n"
+                        + reason + "\".\nALLOW any specific purpose: talking or replying to a friend or family, "
+                        + "sending a message or a Snapchat streak, a call, posting something, work, class, "
+                        + "a quick lookup. DENY only boredom, 'just scrolling', reels/shorts, or no real reason. "
+                        + "When in doubt about a social or communication reason, allow it.\n"
                         + "If you allow, they get " + pass + " minutes. Reply in JSON: "
                         + "{\"allow\": true|false, \"reply\": \"one short in-character sentence, max 14 words\"}";
                 JSONObject body = new JSONObject()
@@ -95,7 +116,7 @@ final class Judge {
                                 .put("responseMimeType", "application/json").put("temperature", 0.7));
 
                 URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/"
-                        + Prefs.geminiModel(c) + ":generateContent");
+                        + model + ":generateContent");
                 HttpURLConnection con = (HttpURLConnection) url.openConnection();
                 con.setRequestMethod("POST");
                 con.setDoOutput(true);
@@ -104,6 +125,21 @@ final class Judge {
                 con.setRequestProperty("Content-Type", "application/json");
                 con.setRequestProperty("x-goog-api-key", key);
                 try (OutputStream out = con.getOutputStream()) { out.write(body.toString().getBytes(StandardCharsets.UTF_8)); }
+                int code = con.getResponseCode();
+                if (code != 200) {
+                    String err = "";
+                    try (InputStream es = con.getErrorStream()) {
+                        if (es != null) {
+                            ByteArrayOutputStream eb = new ByteArrayOutputStream();
+                            byte[] bb = new byte[4096];
+                            int k;
+                            while ((k = es.read(bb)) > 0) eb.write(bb, 0, k);
+                            err = new JSONObject(eb.toString("UTF-8")).getJSONObject("error").optString("message", "");
+                        }
+                    } catch (Exception ignored) {}
+                    Prefs.setAiStatus(c, "Gemini error " + code + " (" + model + "): " + err);
+                    return null;
+                }
                 String resp;
                 try (InputStream in = con.getInputStream()) {
                     ByteArrayOutputStream buf = new ByteArrayOutputStream();
@@ -119,12 +155,15 @@ final class Judge {
                 boolean allowed = v.optBoolean("allow", false);
                 String reply = v.optString("reply", "").trim();
                 if (reply.isEmpty()) reply = persona.line(allowed ? "allow" : "deny", Characters.vars("pass", pass));
-                return new Verdict(allowed, reply.length() > 120 ? reply.substring(0, 120) : reply, pass);
-            } catch (Exception ignored) {
-                // fall through to offline rules
+                Verdict out = new Verdict(allowed, reply.length() > 120 ? reply.substring(0, 120) : reply, pass);
+                out.byAi = true;
+                Prefs.setAiStatus(c, "Gemini works (" + model + ")");
+                return out;
+            } catch (Exception e) {
+                Prefs.setAiStatus(c, "Gemini unreachable (" + model + "): " + e.getClass().getSimpleName()
+                        + (e.getMessage() == null ? "" : " " + e.getMessage()));
+                return null;
             }
         }
-        boolean allowed = offline(reason);
-        return new Verdict(allowed, persona.line(allowed ? "allow" : "deny", Characters.vars("pass", pass)), pass);
     }
 }

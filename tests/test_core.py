@@ -39,6 +39,9 @@ def test_offline_verdict():
     assert core.offline_verdict("need to reply to a dm from my club")
     assert not core.offline_verdict("just bored lol")
     assert not core.offline_verdict("dm")
+    assert core.offline_verdict("send my daily streak")
+    assert core.offline_verdict("talk to a friend")
+    assert not core.offline_verdict("bored, just scrolling")
 
 
 def test_cases_and_report():
@@ -80,7 +83,7 @@ def test_meal_pass_and_reminder():
     p = {"meal": "Eat well. {pass} min", "deny": "no", "allow": "ok", "label": "x"}
     ok, reply, mins = core.interrogate("eating lunch", "YouTube", p, cfg())
     assert ok and mins == 20 and "20" in reply
-    ok, _, _ = core.interrogate("just bored", "YouTube", p, cfg())
+    ok, _, _ = core.interrogate("so bored", "YouTube", p, cfg())
     assert not ok
     r = core.Reminder(cfg())
     assert not r.add(29 * 60, True) and r.add(60, True)        # 30 min -> nudge

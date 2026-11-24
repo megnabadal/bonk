@@ -132,6 +132,19 @@ public class MainActivity extends Activity {
         EditText key = field("Gemini API key (optional, free at aistudio.google.com)", Prefs.geminiKey(this));
         key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         EditText model = field("Gemini model", Prefs.geminiModel(this));
+        TextView aiStatus = label("AI status: " + Prefs.aiStatus(this), 13);
+        root.addView(aiStatus);
+        button("Test Gemini key", v -> {
+            Prefs.setGemini(this, key.getText().toString(), model.getText().toString());
+            if (Prefs.geminiKey(this).isEmpty()) { aiStatus.setText("AI status: no key pasted"); return; }
+            aiStatus.setText("AI status: testing...");
+            Characters.Persona p = Characters.persona(this, Characters.current(this).personality);
+            new Thread(() -> {
+                Judge.Verdict t = Judge.judge(this, "replying to my friend's message", "Instagram", p);
+                runOnUiThread(() -> aiStatus.setText("AI status: " + Prefs.aiStatus(this)
+                        + (t.byAi ? "\nSample reply: " + t.reply : "")));
+            }).start();
+        });
 
         // ---- sync
         header("Sync with laptop (optional)");

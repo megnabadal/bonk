@@ -174,6 +174,9 @@ final class Prefs {
                 .putString("gemini_model", model.trim().isEmpty() ? "gemini-3.8-flash" : model.trim()).apply();
     }
 
+    static String aiStatus(Context c) { return sp(c).getString("ai_status", "Not tried yet"); }
+    static void setAiStatus(Context c, String s) { sp(c).edit().putString("ai_status", s).apply(); }
+
     // ---- sync
     static String syncUrl(Context c) { return sp(c).getString("sync_url", ""); }
     static String syncCode(Context c) { return sp(c).getString("sync_code", ""); }
